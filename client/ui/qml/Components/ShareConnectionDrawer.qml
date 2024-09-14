@@ -36,7 +36,7 @@ DrawerType2 {
         configFileName = "amnezia_config"
     }
 
-    expandedContent: Item {
+    expandedStateContent: Item {
         implicitHeight: root.expandedHeight
 
         Connections {
@@ -57,8 +57,6 @@ DrawerType2 {
             anchors.rightMargin: 16
 
             headerText: root.headerText
-
-            KeyNavigation.tab: shareButton
         }
 
         FlickableType {
@@ -85,8 +83,6 @@ DrawerType2 {
 
                     text: qsTr("Share")
                     leftImageSource: "qrc:/images/controls/share-2.svg"
-
-                    KeyNavigation.tab: copyConfigTextButton
 
                     clickedFunc: function() {
                         var fileName = ""
@@ -124,8 +120,6 @@ DrawerType2 {
 
                     Keys.onReturnPressed: { copyConfigTextButton.clicked() }
                     Keys.onEnterPressed: { copyConfigTextButton.clicked() }
-
-                    KeyNavigation.tab: copyNativeConfigStringButton.visible ? copyNativeConfigStringButton : showSettingsButton
                 }
 
                 BasicButtonType {
@@ -166,8 +160,6 @@ DrawerType2 {
                     clickedFunc: function() {
                         configContentDrawer.open()
                     }
-
-                    KeyNavigation.tab: header
                 }
 
                 DrawerType2 {
@@ -184,23 +176,10 @@ DrawerType2 {
                         }
                     }
 
-                    expandedContent: Item {
+                    expandedStateContent: Item {
                         id: configContentContainer
 
                         implicitHeight: configContentDrawer.expandedHeight
-
-                        Connections {
-                            target: configContentDrawer
-                            enabled: !GC.isMobile()
-                            function onOpened() {
-                                focusItem.forceActiveFocus()
-                            }
-                        }
-
-                        Item {
-                            id: focusItem
-                            KeyNavigation.tab: backButton
-                        }
 
                         Connections {
                             target: copyNativeConfigStringButton
@@ -232,8 +211,6 @@ DrawerType2 {
                             anchors.topMargin: 16
 
                             backButtonFunction: function() { configContentDrawer.close() }
-
-                            KeyNavigation.tab: focusItem
                         }
 
                         FlickableType {
