@@ -404,7 +404,9 @@ ErrorCode ApiController::getConfigForService(const QString &installationUuid, co
     }
     apiPayload[configKey::serviceType] = serviceType;
     apiPayload[configKey::uuid] = installationUuid;
-    apiPayload[configKey::authData] = authData;
+    if (!authData.isEmpty()) {
+        apiPayload[configKey::authData] = authData;
+    }
 
     QSimpleCrypto::QBlockCipher blockCipher;
     QByteArray key = blockCipher.generatePrivateSalt(32);
@@ -457,7 +459,7 @@ ErrorCode ApiController::getConfigForService(const QString &installationUuid, co
 
     auto encryptedResponseBody = reply->readAll();
 
-    if (sslErrors.isEmpty() && shouldBypassProxy(reply, encryptedResponseBody, true)) {
+    if (sslErrors.isEmpty() && shouldBypassProxy(reply, encryptedResponseBody, true, key, iv, salt)) {
         m_proxyUrls = getProxyUrls();
         std::random_device randomDevice;
         std::mt19937 generator(randomDevice());
@@ -473,7 +475,7 @@ ErrorCode ApiController::getConfigForService(const QString &installationUuid, co
             wait.exec();
 
             encryptedResponseBody = reply->readAll();
-            if (!sslErrors.isEmpty() || !shouldBypassProxy(reply, encryptedResponseBody, false)) {
+            if (!sslErrors.isEmpty() || !shouldBypassProxy(reply, encryptedResponseBody, true, key, iv, salt)) {
                 break;
             }
         }
