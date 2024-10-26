@@ -96,6 +96,7 @@ namespace amnezia
 
         // import and install errors
         ImportInvalidConfigError = 900,
+        ImportOpenConfigError = 901,
 
         // Android errors
         AndroidError = 1000,
@@ -106,6 +107,7 @@ namespace amnezia
         ApiConfigEmptyError = 1102,
         ApiConfigTimeoutError = 1103,
         ApiConfigSslError = 1104,
+        ApiMissingAgwPublicKey = 1105,
 
         // QFile errors
         OpenError = 1200,
