@@ -386,8 +386,14 @@ ErrorCode ClientManagementModel::appendClient(const DockerContainer container, c
     }
 
     auto protocolConfig = ContainerProps::getProtocolConfigFromContainer(protocol, containerConfig);
-
-    return appendClient(protocolConfig.value(config_key::clientId).toString(), clientName, container, credentials, serverController);
+    QString clientId;
+    if (container == DockerContainer::Xray) {
+        clientId = protocolConfig.value("outbounds").toArray()[0].toObject()["settings"].toObject()["vnext"]
+                    .toArray()[0].toObject()["users"].toArray()[0].toObject()["id"].toString();
+    } else {
+        clientId = protocolConfig.value(config_key::clientId).toString();
+    }
+    return appendClient(clientId, clientName, container, credentials, serverController);
 }
 
 ErrorCode ClientManagementModel::appendClient(const QString &clientId, const QString &clientName, const DockerContainer container,

@@ -72,7 +72,6 @@ QString XrayConfigurator::prepareServerConfig(const ServerCredentials &credentia
         amnezia::protocols::xray::serverConfigPath,
         libssh::ScpOverwriteMode::ScpOverwriteExisting
     );
-    qDebug() << "Updated config:" << updatedConfig;
     if (errorCode != ErrorCode::NoError) {
         return "";
     }
@@ -121,10 +120,6 @@ QString XrayConfigurator::createConfig(const ServerCredentials &credentials, Doc
     config.replace("$XRAY_PUBLIC_KEY", xrayPublicKey);
     config.replace("$XRAY_SHORT_ID", xrayShortId);
 
-    QJsonObject jConfig;
-    jConfig[config_key::config] = config;
-    jConfig[config_key::clientId] = xrayClientId;
-
     qDebug() << "===>> xrayClientId: " << xrayClientId;
-    return QJsonDocument(jConfig).toJson();
+    return config;
 }
