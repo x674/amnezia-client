@@ -239,28 +239,41 @@ ErrorCode ClientManagementModel::getXrayClients(const DockerContainer container,
 {
     ErrorCode error = ErrorCode::NoError;
 
-    const QString xrayClientIdFile = QStringLiteral("/opt/amnezia/xray/xray_uuid.key");
-    const QString xrayClientId = serverController->getTextFileFromContainer(container, credentials, xrayClientIdFile, error);
+    const QString serverConfigPath = amnezia::protocols::xray::serverConfigPath;
+    const QString configString = serverController->getTextFileFromContainer(container, credentials, serverConfigPath, error);
     if (error != ErrorCode::NoError) {
-        logger.error() << "Failed to get the xray client id file from the server";
+        logger.error() << "Failed to get the xray server config file from the server";
         return error;
     }
-    QStringList xrayClientIds { xrayClientId };
 
-    for (auto &xrayClientId : xrayClientIds) {
-        if (!isClientExists(xrayClientId)) {
+    QJsonDocument serverConfig = QJsonDocument::fromJson(configString.toUtf8());
+    if (serverConfig.isNull()) {
+        logger.error() << "Failed to parse xray server config JSON";
+        return ErrorCode::InternalError;
+    }
+
+    if (!serverConfig.object().contains("inbounds") || serverConfig.object()["inbounds"].toArray().isEmpty()) {
+        logger.error() << "Invalid xray server config structure";
+        return ErrorCode::InternalError;
+    }
+
+    const QJsonArray clients = serverConfig.object()["inbounds"].toArray()[0].toObject()["settings"].toObject()["clients"].toArray();
+    for (const auto &clientValue : clients) {
+        QString clientId = clientValue.toObject()["id"].toString();
+        
+        if (!isClientExists(clientId)) {
             QJsonObject client;
-            client[configKey::clientId] = xrayClientId;
+            client[configKey::clientId] = clientId;
 
             QJsonObject userData;
-            userData[configKey::clientName] = QStringLiteral("Client %1").arg(count);
-            userData[configKey::userData] = userData;
+            userData[configKey::clientName] = QString("Client %1").arg(count);
+            client[configKey::userData] = userData;
 
             m_clientsTable.push_back(client);
-
             count++;
         }
     }
+
     return error;
 }
 
@@ -348,12 +361,19 @@ ErrorCode ClientManagementModel::appendClient(const DockerContainer container, c
                                               const QSharedPointer<ServerController> &serverController)
 {
     Proto protocol;
-    if (container == DockerContainer::ShadowSocks || container == DockerContainer::Cloak) {
-        protocol = Proto::OpenVpn;
-    } else if (container == DockerContainer::OpenVpn || container == DockerContainer::WireGuard || container == DockerContainer::Awg) {
-        protocol = ContainerProps::defaultProtocol(container);
-    } else {
-        return ErrorCode::NoError;
+    switch (container) {
+        case DockerContainer::ShadowSocks:
+        case DockerContainer::Cloak:
+            protocol = Proto::OpenVpn;
+            break;
+        case DockerContainer::OpenVpn:
+        case DockerContainer::WireGuard:
+        case DockerContainer::Awg:
+        case DockerContainer::Xray:
+            protocol = ContainerProps::defaultProtocol(container);
+            break;
+        default:
+            return ErrorCode::NoError;
     }
 
     auto protocolConfig = ContainerProps::getProtocolConfigFromContainer(protocol, containerConfig);
@@ -670,21 +690,81 @@ ErrorCode ClientManagementModel::revokeXray(const int row,
 {
     ErrorCode error = ErrorCode::NoError;
 
-    const QString xrayClientIdFile = QStringLiteral("/opt/amnezia/xray/xray_uuid.key");
-    const QString xrayClientId = serverController->getTextFileFromContainer(container, credentials, xrayClientIdFile, error);
+    // Get server config
+    const QString serverConfigPath = amnezia::protocols::xray::serverConfigPath;
+    const QString configString = serverController->getTextFileFromContainer(container, credentials, serverConfigPath, error);
     if (error != ErrorCode::NoError) {
-        logger.error() << "Failed to get the xray client id file from the server";
+        logger.error() << "Failed to get the xray server config file";
         return error;
     }
 
+    QJsonDocument serverConfig = QJsonDocument::fromJson(configString.toUtf8());
+    if (serverConfig.isNull()) {
+        logger.error() << "Failed to parse xray server config JSON";
+        return ErrorCode::InternalError;
+    }
+
+    // Get client ID to remove
     auto client = m_clientsTable.at(row).toObject();
     QString clientId = client.value(configKey::clientId).toString();
 
-    // remove from /opt/amnezia/xray/server.json
+    // Remove client from server config
+    QJsonObject configObj = serverConfig.object();
+    QJsonArray inbounds = configObj["inbounds"].toArray();
+    QJsonObject inbound = inbounds[0].toObject();
+    QJsonObject settings = inbound["settings"].toObject();
+    QJsonArray clients = settings["clients"].toArray();
 
+    for (int i = 0; i < clients.size(); ++i) {
+        if (clients[i].toObject()["id"].toString() == clientId) {
+            clients.removeAt(i);
+            break;
+        }
+    }
+
+    // Update server config
+    settings["clients"] = clients;
+    inbound["settings"] = settings;
+    inbounds[0] = inbound;
+    configObj["inbounds"] = inbounds;
+
+    // Upload updated config
+    error = serverController->uploadTextFileToContainer(
+        container, 
+        credentials,
+        QJsonDocument(configObj).toJson(),
+        serverConfigPath
+    );
+    if (error != ErrorCode::NoError) {
+        logger.error() << "Failed to upload updated xray config";
+        return error;
+    }
+
+    // Remove from local table
     beginRemoveRows(QModelIndex(), row, row);
     m_clientsTable.removeAt(row);
     endRemoveRows();
+
+    // Update clients table file on server
+    const QByteArray clientsTableString = QJsonDocument(m_clientsTable).toJson();
+    QString clientsTableFile = QString("/opt/amnezia/%1/clientsTable")
+        .arg(ContainerProps::containerTypeToString(container));
+
+    error = serverController->uploadTextFileToContainer(container, credentials, clientsTableString, clientsTableFile);
+    if (error != ErrorCode::NoError) {
+        logger.error() << "Failed to upload the clientsTable file";
+    }
+
+    // Restart container
+    QString restartScript = QString("docker restart $CONTAINER_NAME");
+    error = serverController->runScript(
+        credentials, 
+        serverController->replaceVars(restartScript, serverController->genVarsForScript(credentials, container))
+    );
+    if (error != ErrorCode::NoError) {
+        logger.error() << "Failed to restart xray container";
+        return error;
+    }
 
     return error;
 }
