@@ -770,6 +770,12 @@ ErrorCode ServerController::isUserInSudo(const ServerCredentials &credentials, D
 
     if (!stdOut.contains("sudo"))
         return ErrorCode::ServerUserNotInSudo;
+    if (stdErr.contains("command not found"))
+        return ErrorCode::SudoPackageIsNotPreinstalled;
+    if (stdErr.contains("sudoers"))
+        return ErrorCode::ServerUserNotInSudoers;
+    if (stdErr.contains("password is required"))
+        return ErrorCode::ServerUserPasswordRequired;
 
     return error;
 }
