@@ -21,14 +21,6 @@ QString XrayConfigurator::prepareServerConfig(const ServerCredentials &credentia
     // Generate new UUID for client
     QString clientId = QUuid::createUuid().toString(QUuid::WithoutBraces);
     
-    // Create configuration for new client
-    QString clientConfig = QString(R"(
-                {
-                    "id": "%1",
-                    "flow": "xtls-rprx-vision"
-                })")
-            .arg(clientId);
-
     // Get current server config
     QString currentConfig = m_serverController->getTextFileFromContainer(
         container, credentials, amnezia::protocols::xray::serverConfigPath, errorCode);
@@ -39,23 +31,46 @@ QString XrayConfigurator::prepareServerConfig(const ServerCredentials &credentia
 
     // Parse current config as JSON
     QJsonDocument doc = QJsonDocument::fromJson(currentConfig.toUtf8());
-    if (doc.isNull()) {
+    if (doc.isNull() || !doc.isObject()) {
         errorCode = ErrorCode::InternalError;
         return "";
     }
 
     QJsonObject serverConfig = doc.object();
     
-    if (!serverConfig.contains("inbounds") || serverConfig["inbounds"].toArray().isEmpty()) {
+    // Validate server config structure
+    if (!serverConfig.contains("inbounds")) {
+        errorCode = ErrorCode::InternalError;
+        return "";
+    }
+
+    QJsonArray inbounds = serverConfig["inbounds"].toArray();
+    if (inbounds.isEmpty()) {
+        errorCode = ErrorCode::InternalError;
         return "";
     }
     
-    QJsonArray inbounds = serverConfig["inbounds"].toArray();
     QJsonObject inbound = inbounds[0].toObject();
+    if (!inbound.contains("settings")) {
+        errorCode = ErrorCode::InternalError;
+        return "";
+    }
+
     QJsonObject settings = inbound["settings"].toObject();
+    if (!settings.contains("clients")) {
+        errorCode = ErrorCode::InternalError;
+        return "";
+    }
+
     QJsonArray clients = settings["clients"].toArray();
     
-    clients.append(QJsonDocument::fromJson(clientConfig.toUtf8()).object());
+    // Create configuration for new client
+    QJsonObject clientConfig {
+        {"id", clientId},
+        {"flow", "xtls-rprx-vision"}
+    };
+    
+    clients.append(clientConfig);
     
     // Update config
     settings["clients"] = clients;
@@ -95,31 +110,44 @@ QString XrayConfigurator::createConfig(const ServerCredentials &credentials, Doc
 {
     // Get client ID from prepareServerConfig
     QString xrayClientId = prepareServerConfig(credentials, container, containerConfig, errorCode);
-    if (errorCode != ErrorCode::NoError) {
+    if (errorCode != ErrorCode::NoError || xrayClientId.isEmpty()) {
+        errorCode = ErrorCode::InternalError;
         return "";
     }
 
     QString config = m_serverController->replaceVars(amnezia::scriptData(ProtocolScriptType::xray_template, container),
                                                      m_serverController->genVarsForScript(credentials, container, containerConfig));
+    
+    if (config.isEmpty()) {
+        errorCode = ErrorCode::InternalError;
+        return "";
+    }
 
     QString xrayPublicKey =
             m_serverController->getTextFileFromContainer(container, credentials, amnezia::protocols::xray::PublicKeyPath, errorCode);
-    if (errorCode != ErrorCode::NoError) {
+    if (errorCode != ErrorCode::NoError || xrayPublicKey.isEmpty()) {
+        errorCode = ErrorCode::InternalError;
         return "";
     }
     xrayPublicKey.replace("\n", "");
     
     QString xrayShortId =
             m_serverController->getTextFileFromContainer(container, credentials, amnezia::protocols::xray::shortidPath, errorCode);
-    if (errorCode != ErrorCode::NoError) {
+    if (errorCode != ErrorCode::NoError || xrayShortId.isEmpty()) {
+        errorCode = ErrorCode::InternalError;
         return "";
     }
     xrayShortId.replace("\n", "");
+
+    // Validate all required variables are present
+    if (!config.contains("$XRAY_CLIENT_ID") || !config.contains("$XRAY_PUBLIC_KEY") || !config.contains("$XRAY_SHORT_ID")) {
+        errorCode = ErrorCode::InternalError;
+        return "";
+    }
 
     config.replace("$XRAY_CLIENT_ID", xrayClientId);
     config.replace("$XRAY_PUBLIC_KEY", xrayPublicKey);
     config.replace("$XRAY_SHORT_ID", xrayShortId);
 
-    qDebug() << "===>> xrayClientId: " << xrayClientId;
     return config;
 }

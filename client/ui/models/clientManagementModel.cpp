@@ -264,9 +264,26 @@ ErrorCode ClientManagementModel::getXrayClients(const DockerContainer container,
         return ErrorCode::InternalError;
     }
 
-    const QJsonArray clients = serverConfig.object()["inbounds"].toArray()[0].toObject()["settings"].toObject()["clients"].toArray();
+    const QJsonObject inbound = serverConfig.object()["inbounds"].toArray()[0].toObject();
+    if (!inbound.contains("settings")) {
+        logger.error() << "Missing settings in xray inbound config";
+        return ErrorCode::InternalError;
+    }
+
+    const QJsonObject settings = inbound["settings"].toObject();
+    if (!settings.contains("clients")) {
+        logger.error() << "Missing clients in xray settings config"; 
+        return ErrorCode::InternalError;
+    }
+
+    const QJsonArray clients = settings["clients"].toArray();
     for (const auto &clientValue : clients) {
-        QString clientId = clientValue.toObject()["id"].toString();
+        const QJsonObject clientObj = clientValue.toObject();
+        if (!clientObj.contains("id")) {
+            logger.error() << "Missing id in xray client config";
+            continue;
+        }
+        QString clientId = clientObj["id"].toString();
         
         if (!isClientExists(clientId)) {
             QJsonObject client;
@@ -388,8 +405,38 @@ ErrorCode ClientManagementModel::appendClient(const DockerContainer container, c
     auto protocolConfig = ContainerProps::getProtocolConfigFromContainer(protocol, containerConfig);
     QString clientId;
     if (container == DockerContainer::Xray) {
-        clientId = protocolConfig.value("outbounds").toArray()[0].toObject()["settings"].toObject()["vnext"]
-                    .toArray()[0].toObject()["users"].toArray()[0].toObject()["id"].toString();
+        if (!protocolConfig.contains("outbounds")) {
+            return ErrorCode::InternalError;
+        }
+        QJsonArray outbounds = protocolConfig.value("outbounds").toArray();
+        if (outbounds.isEmpty()) {
+            return ErrorCode::InternalError;
+        }
+        QJsonObject outbound = outbounds[0].toObject();
+        if (!outbound.contains("settings")) {
+            return ErrorCode::InternalError;
+        }
+        QJsonObject settings = outbound["settings"].toObject();
+        if (!settings.contains("vnext")) {
+            return ErrorCode::InternalError;
+        }
+        QJsonArray vnext = settings["vnext"].toArray();
+        if (vnext.isEmpty()) {
+            return ErrorCode::InternalError;
+        }
+        QJsonObject vnextObj = vnext[0].toObject();
+        if (!vnextObj.contains("users")) {
+            return ErrorCode::InternalError;
+        }
+        QJsonArray users = vnextObj["users"].toArray();
+        if (users.isEmpty()) {
+            return ErrorCode::InternalError;
+        }
+        QJsonObject user = users[0].toObject();
+        if (!user.contains("id")) {
+            return ErrorCode::InternalError;
+        }
+        clientId = user["id"].toString();
     } else {
         clientId = protocolConfig.value(config_key::clientId).toString();
     }
@@ -725,13 +772,38 @@ ErrorCode ClientManagementModel::revokeXray(const int row,
 
     // Remove client from server config
     QJsonObject configObj = serverConfig.object();
+    if (!configObj.contains("inbounds")) {
+        logger.error() << "Missing inbounds in xray config";
+        return ErrorCode::InternalError;
+    }
+
     QJsonArray inbounds = configObj["inbounds"].toArray();
+    if (inbounds.isEmpty()) {
+        logger.error() << "Empty inbounds array in xray config";
+        return ErrorCode::InternalError;
+    }
+
     QJsonObject inbound = inbounds[0].toObject();
+    if (!inbound.contains("settings")) {
+        logger.error() << "Missing settings in xray inbound config";
+        return ErrorCode::InternalError;
+    }
+
     QJsonObject settings = inbound["settings"].toObject();
+    if (!settings.contains("clients")) {
+        logger.error() << "Missing clients in xray settings";
+        return ErrorCode::InternalError;
+    }
+
     QJsonArray clients = settings["clients"].toArray();
+    if (clients.isEmpty()) {
+        logger.error() << "Empty clients array in xray config";
+        return ErrorCode::InternalError;
+    }
 
     for (int i = 0; i < clients.size(); ++i) {
-        if (clients[i].toObject()["id"].toString() == clientId) {
+        QJsonObject clientObj = clients[i].toObject();
+        if (clientObj.contains("id") && clientObj["id"].toString() == clientId) {
             clients.removeAt(i);
             break;
         }
