@@ -42,31 +42,26 @@
 #include "ui/models/protocols_model.h"
 #include "ui/models/servers_model.h"
 #include "ui/models/services/sftpConfigModel.h"
+#include "ui/models/services/socks5ProxyConfigModel.h"
 #include "ui/models/sites_model.h"
 #include "ui/models/clientManagementModel.h"
 #include "ui/models/appSplitTunnelingModel.h"
+#include "ui/models/apiServicesModel.h"
+#include "ui/models/apiCountryModel.h"
 
 #define amnApp (static_cast<AmneziaApplication *>(QCoreApplication::instance()))
 
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
     #define AMNEZIA_BASE_CLASS QGuiApplication
 #else
-    #define AMNEZIA_BASE_CLASS SingleApplication
-    #define QAPPLICATION_CLASS QApplication
-    #include "singleapplication.h"
+    #define AMNEZIA_BASE_CLASS QApplication
 #endif
 
 class AmneziaApplication : public AMNEZIA_BASE_CLASS
 {
     Q_OBJECT
 public:
-#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
     AmneziaApplication(int &argc, char *argv[]);
-#else
-    AmneziaApplication(int &argc, char *argv[], bool allowSecondary = false,
-                       SingleApplication::Options options = SingleApplication::User, int timeout = 1000,
-                       const QString &userData = {});
-#endif
     virtual ~AmneziaApplication();
 
     void init();
@@ -75,6 +70,10 @@ public:
     void loadTranslator();
     void updateTranslator(const QLocale &locale);
     bool parseCommands();
+
+#if !defined(Q_OS_ANDROID) && !defined(Q_OS_IOS)
+    void startLocalServer();
+#endif
 
     QQmlApplicationEngine *qmlEngine() const;
     QNetworkAccessManager *manager() { return m_nam; }
@@ -103,6 +102,8 @@ private:
     QSharedPointer<SitesModel> m_sitesModel;
     QSharedPointer<AppSplitTunnelingModel> m_appSplitTunnelingModel;
     QSharedPointer<ClientManagementModel> m_clientManagementModel;
+    QSharedPointer<ApiServicesModel> m_apiServicesModel;
+    QSharedPointer<ApiCountryModel> m_apiCountryModel;
 
     QScopedPointer<OpenVpnConfigModel> m_openVpnConfigModel;
     QScopedPointer<ShadowSocksConfigModel> m_shadowSocksConfigModel;
@@ -115,6 +116,7 @@ private:
 #endif
 
     QScopedPointer<SftpConfigModel> m_sftpConfigModel;
+    QScopedPointer<Socks5ProxyConfigModel> m_socks5ConfigModel;
 
     QSharedPointer<VpnConnection> m_vpnConnection;
     QThread m_vpnConnectionThread;
@@ -134,6 +136,8 @@ private:
     QScopedPointer<UpdateController> m_updateController;
 
     QNetworkAccessManager *m_nam;
+
+    QMetaObject::Connection m_reloadConfigErrorOccurredConnection;
 };
 
 #endif // AMNEZIA_APPLICATION_H

@@ -4,6 +4,7 @@ import QtQuick.Layouts
 import QtQuick.Shapes
 
 import PageEnum 1.0
+import Style 1.0
 
 import "./"
 import "../Controls2"
@@ -23,8 +24,14 @@ PageType {
         target: PageController
 
         function onGoToPageHome() {
-            tabBar.setCurrentIndex(0)
-            tabBarStackView.goToTabBarPage(PageEnum.PageHome)
+            if (PageController.isStartPageVisible()) {
+                tabBar.visible = false
+                tabBarStackView.goToTabBarPage(PageEnum.PageSetupWizardStart)
+            } else {
+                tabBar.visible = true
+                tabBar.setCurrentIndex(0)
+                tabBarStackView.goToTabBarPage(PageEnum.PageHome)
+            }
         }
 
         function onGoToPageSettings() {
@@ -64,7 +71,6 @@ PageType {
         }
 
         function onGoToStartPage() {
-            connectionTypeSelection.close()
             while (tabBarStackView.depth > 1) {
                 tabBarStackView.pop()
             }
@@ -77,9 +83,9 @@ PageType {
 
             var pageName = tabBarStackView.currentItem.objectName
             if ((pageName === PageController.getPagePath(PageEnum.PageShare)) ||
-                    (pageName === PageController.getPagePath(PageEnum.PageSettings))) {
+                    (pageName === PageController.getPagePath(PageEnum.PageSettings)) ||
+                    (pageName === PageController.getPagePath(PageEnum.PageSetupWizardConfigSource))) {
                 PageController.goToPageHome()
-                tabBar.previousIndex = 0
             } else {
                 PageController.closePage()
             }
@@ -99,9 +105,10 @@ PageType {
     Connections {
         target: InstallController
 
-        function onInstallationErrorOccurred(errorMessage) {
+        function onInstallationErrorOccurred(error) {
             PageController.showBusyIndicator(false)
-            PageController.showErrorMessage(errorMessage)
+
+            PageController.showErrorMessage(error)
 
             var needCloseCurrentPage = false
             var currentPageName = tabBarStackView.currentItem.objectName
@@ -116,12 +123,43 @@ PageType {
             }
         }
 
+        function onWrongInstallationUser(message) {
+            onInstallationErrorOccurred(message)
+        }
+
         function onUpdateContainerFinished(message) {
             PageController.showNotificationMessage(message)
             PageController.closePage()
         }
 
         function onCachedProfileCleared(message) {
+            PageController.showNotificationMessage(message)
+        }
+
+        function onApiConfigRemoved(message) {
+            PageController.showNotificationMessage(message)
+        }
+
+        function onInstallServerFromApiFinished(message) {
+            PageController.showBusyIndicator(false)
+            if (!ConnectionController.isConnected) {
+                ServersModel.setDefaultServerIndex(ServersModel.getServersCount() - 1);
+                ServersModel.processedIndex = ServersModel.defaultIndex
+            }
+
+            PageController.goToPageHome()
+            PageController.showNotificationMessage(message)
+        }
+
+        function onChangeApiCountryFinished(message) {
+            PageController.showBusyIndicator(false)
+
+            PageController.goToPageHome()
+            PageController.showNotificationMessage(message)
+        }
+
+        function onReloadServerFromApiFinished(message) {
+            PageController.goToPageHome()
             PageController.showNotificationMessage(message)
         }
     }
@@ -146,8 +184,14 @@ PageType {
     Connections {
         target: ImportController
 
-        function onImportErrorOccurred(errorMessage, goToPageHome) {
-            PageController.showErrorMessage(errorMessage)
+        function onImportErrorOccurred(error, goToPageHome) {
+            PageController.showErrorMessage(error)
+        }
+
+        function onRestoreAppConfig(data) {
+            PageController.showBusyIndicator(true)
+            SettingsController.restoreAppConfigFromData(data)
+            PageController.showBusyIndicator(false)
         }
     }
 
@@ -156,6 +200,19 @@ PageType {
 
         function onLoggingDisableByWatcher() {
             PageController.showNotificationMessage(qsTr("Logging was disabled after 14 days, log files were deleted"))
+        }
+
+        function onRestoreBackupFinished() {
+            PageController.showNotificationMessage(qsTr("Settings restored from backup file"))
+            PageController.goToPageHome()
+        }
+
+        function onLoggingStateChanged() {
+            if (SettingsController.isLoggingEnabled) {
+                var message = qsTr("Logging is enabled. Note that logs will be automatically" +
+                                   "disabled after 14 days, and all log files will be deleted.")
+                PageController.showNotificationMessage(message)
+            }
         }
     }
 
@@ -167,30 +224,36 @@ PageType {
         anchors.left: parent.left
         anchors.bottom: tabBar.top
 
-        width: parent.width
-        height: root.height - tabBar.implicitHeight
-
         enabled: !root.isControlsDisabled
 
         function goToTabBarPage(page) {
-            connectionTypeSelection.close()
-
             var pagePath = PageController.getPagePath(page)
             tabBarStackView.clear(StackView.Immediate)
             tabBarStackView.replace(pagePath, { "objectName" : pagePath }, StackView.Immediate)
         }
 
         Component.onCompleted: {
-            var pagePath = PageController.getPagePath(PageEnum.PageHome)
-            ServersModel.processedIndex = ServersModel.defaultIndex
+            var pagePath
+            if (PageController.isStartPageVisible()) {
+                tabBar.visible = false
+                pagePath = PageController.getPagePath(PageEnum.PageSetupWizardStart)
+            } else {
+                tabBar.visible = true
+                pagePath = PageController.getPagePath(PageEnum.PageHome)
+                ServersModel.processedIndex = ServersModel.defaultIndex
+            }
+
             tabBarStackView.push(pagePath, { "objectName" : pagePath })
+        }
+
+        Keys.onPressed: function(event) {
+            PageController.keyPressEvent(event.key)
+            event.accepted = true
         }
     }
 
     TabBar {
         id: tabBar
-
-        property int previousIndex: 0
 
         anchors.right: parent.right
         anchors.left: parent.left
@@ -200,6 +263,8 @@ PageType {
         bottomPadding: 8
         leftPadding: 96
         rightPadding: 96
+
+        height: visible ? homeTabButton.implicitHeight + tabBar.topPadding + tabBar.bottomPadding : 0
 
         enabled: !root.isControlsDisabled && !root.isTabBarDisabled
 
@@ -212,13 +277,13 @@ PageType {
                 startY: 0
 
                 PathLine { x: width; y: 0 }
-                PathLine { x: width; y: height - 1 }
-                PathLine { x: 0; y: height - 1 }
+                PathLine { x: width; y: tabBar.height - 1 }
+                PathLine { x: 0; y: tabBar.height - 1 }
                 PathLine { x: 0; y: 0 }
 
                 strokeWidth: 1
-                strokeColor: "#2C2D30"
-                fillColor: "#1C1D21"
+                strokeColor: AmneziaStyle.color.slateGray
+                fillColor: AmneziaStyle.color.onyxBlack
             }
         }
 
@@ -230,7 +295,6 @@ PageType {
                 tabBarStackView.goToTabBarPage(PageEnum.PageHome)
                 ServersModel.processedIndex = ServersModel.defaultIndex
                 tabBar.currentIndex = 0
-                tabBar.previousIndex = 0
             }
 
             KeyNavigation.tab: shareTabButton
@@ -259,7 +323,6 @@ PageType {
             clickedFunc: function () {
                 tabBarStackView.goToTabBarPage(PageEnum.PageShare)
                 tabBar.currentIndex = 1
-                tabBar.previousIndex = 1
             }
 
             KeyNavigation.tab: settingsTabButton
@@ -272,7 +335,6 @@ PageType {
             clickedFunc: function () {
                 tabBarStackView.goToTabBarPage(PageEnum.PageSettings)
                 tabBar.currentIndex = 2
-                tabBar.previousIndex = 2
             }
 
             KeyNavigation.tab: plusTabButton
@@ -283,19 +345,11 @@ PageType {
             isSelected: tabBar.currentIndex === 3
             image: "qrc:/images/controls/plus.svg"
             clickedFunc: function () {
-                connectionTypeSelection.open()
+                tabBarStackView.goToTabBarPage(PageEnum.PageSetupWizardConfigSource)
+                tabBar.currentIndex = 3
             }
 
             Keys.onTabPressed: PageController.forceStackActiveFocus()
-        }
-    }
-
-    ConnectionTypeSelectionDrawer {
-        id: connectionTypeSelection
-
-        onAboutToHide: {
-            PageController.forceTabBarActiveFocus()
-            tabBar.setCurrentIndex(tabBar.previousIndex)
         }
     }
 }

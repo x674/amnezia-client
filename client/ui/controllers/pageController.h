@@ -4,6 +4,7 @@
 #include <QObject>
 #include <QQmlEngine>
 
+#include "core/defs.h"
 #include "ui/models/servers_model.h"
 
 namespace PageLoader
@@ -34,6 +35,7 @@ namespace PageLoader
         PageServiceSftpSettings,
         PageServiceTorWebsiteSettings,
         PageServiceDnsSettings,
+        PageServiceSocksProxySettings,
 
         PageSetupWizardStart,
         PageSetupWizardCredentials,
@@ -45,6 +47,8 @@ namespace PageLoader
         PageSetupWizardTextKey,
         PageSetupWizardViewConfig,
         PageSetupWizardQrReader,
+        PageSetupWizardApiServicesList,
+        PageSetupWizardApiServiceInfo,
 
         PageProtocolOpenVpnSettings,
         PageProtocolShadowSocksSettings,
@@ -55,7 +59,12 @@ namespace PageLoader
         PageProtocolIKev2Settings,
         PageProtocolRaw,
 
-        PageShareFullAccess
+        PageProtocolWireGuardClientSettings,
+        PageProtocolAwgClientSettings,
+
+        PageShareFullAccess,
+
+        PageDevMenu
     };
     Q_ENUM_NS(PageEnum)
 
@@ -73,7 +82,7 @@ public:
                             QObject *parent = nullptr);
 
 public slots:
-    QString getInitialPage();
+    bool isStartPageVisible();
     QString getPagePath(PageLoader::PageEnum page);
 
     void closeWindow();
@@ -93,6 +102,9 @@ public slots:
     void setDrawerDepth(const int depth);
     int getDrawerDepth();
 
+  private slots:
+    void onShowErrorMessage(amnezia::ErrorCode errorCode);
+
 signals:
     void goToPage(PageLoader::PageEnum page, bool slide = true);
     void goToStartPage();
@@ -105,8 +117,8 @@ signals:
     void closePage();
 
     void restorePageHomeState(bool isContainerInstalled = false);
-    void replaceStartPage();
 
+    void showErrorMessage(amnezia::ErrorCode);
     void showErrorMessage(const QString &errorMessage);
     void showNotificationMessage(const QString &message);
 

@@ -7,6 +7,7 @@ import SortFilterProxyModel 0.2
 
 import PageEnum 1.0
 import ContainerProps 1.0
+import Style 1.0
 
 import "./"
 import "../Controls2"
@@ -78,7 +79,7 @@ PageType {
             }
             case PageShare.ConfigType.ShadowSocks: {
                 ExportController.generateShadowSocksConfig()
-                shareConnectionDrawer.configCaption = qsTr("Save ShadowSocks config")
+                shareConnectionDrawer.configCaption = qsTr("Save Shadowsocks config")
                 shareConnectionDrawer.configExtension = ".json"
                 shareConnectionDrawer.configFileName = "amnezia_for_shadowsocks"
                 break
@@ -102,9 +103,10 @@ PageType {
             PageController.showBusyIndicator(false)
         }
 
-        function onExportErrorOccurred(errorMessage) {
+        function onExportErrorOccurred(error) {
             shareConnectionDrawer.close()
-            PageController.showErrorMessage(errorMessage)
+
+            PageController.showErrorMessage(error)
         }
     }
 
@@ -137,7 +139,7 @@ PageType {
     }
     QtObject {
         id: shadowSocksConnectionFormat
-        property string name: qsTr("ShadowSocks native format")
+        property string name: qsTr("Shadowsocks native format")
         property var type: PageShare.ConfigType.ShadowSocks
     }
     QtObject {
@@ -200,7 +202,7 @@ PageType {
                     parent: root
 
                     anchors.fill: parent
-                    expandedHeight: root.height * 0.45
+                    expandedHeight: root.height
                     onClosed: {
                         if (!GC.isMobile()) {
                             clientNameTextField.textField.forceActiveFocus()
@@ -208,12 +210,17 @@ PageType {
                     }
 
                     expandedContent: ColumnLayout {
+                        id: shareFullAccessDrawerContent
                         anchors.top: parent.top
                         anchors.left: parent.left
                         anchors.right: parent.right
                         anchors.topMargin: 16
 
                         spacing: 0
+
+                        onImplicitHeightChanged: {
+                            shareFullAccessDrawer.expandedHeight = shareFullAccessDrawerContent.implicitHeight + 32
+                        }
 
                         Connections {
                             target: shareFullAccessDrawer
@@ -266,7 +273,7 @@ PageType {
                 implicitWidth: accessTypeSelectorContent.implicitWidth
                 implicitHeight: accessTypeSelectorContent.implicitHeight
 
-                color: "#1C1D21"
+                color: AmneziaStyle.color.onyxBlack
                 radius: 16
 
                 RowLayout {
@@ -320,7 +327,7 @@ PageType {
                 visible: accessTypeSelector.currentIndex === 0
 
                 text: qsTr("Share VPN access without the ability to manage the server")
-                color: "#878B91"
+                color: AmneziaStyle.color.mutedGray
             }
 
             TextFieldWithHeaderType {
@@ -651,7 +658,7 @@ PageType {
                 ImageButtonType {
                     id: closeSearchButton
                     image: "qrc:/images/controls/close.svg"
-                    imageColor: "#D7D8DB"
+                    imageColor: AmneziaStyle.color.paleGray
 
                     Keys.onTabPressed: {
                         if (!GC.isMobile()) {
@@ -765,7 +772,8 @@ PageType {
                                 }
                             }
 
-                            anchors.fill: parent
+                            width: root.width
+                            height: root.height
 
                             expandedContent: ColumnLayout {
                                 id: expandedContent
@@ -775,8 +783,6 @@ PageType {
                                 anchors.topMargin: 16
                                 anchors.leftMargin: 16
                                 anchors.rightMargin: 16
-
-                                spacing: 8
 
                                 onImplicitHeightChanged: {
                                     clientInfoDrawer.expandedHeight = expandedContent.implicitHeight + 32
@@ -790,49 +796,54 @@ PageType {
                                     }
                                 }
 
-                                Header2Type {
-                                    Layout.fillWidth: true
-
-                                    headerText: clientName
-                                }
-
-                                ColumnLayout
-                                {
-                                    id: textColumn
-                                    property string textColor: "#878B91"
+                                Header2TextType {
+                                    Layout.maximumWidth: parent.width
                                     Layout.bottomMargin: 24
 
-                                    ParagraphTextType {
-                                        color: textColumn.textColor
-                                        visible: creationDate
-                                        Layout.fillWidth: true
+                                    text: clientName
+                                    maximumLineCount: 2
+                                    wrapMode: Text.Wrap
+                                    elide: Qt.ElideRight
+                                }
 
-                                        text: qsTr("Creation date: %1").arg(creationDate)
-                                    }
+                                ParagraphTextType {
+                                    color: AmneziaStyle.color.mutedGray
+                                    visible: creationDate
+                                    Layout.fillWidth: true
 
-                                    ParagraphTextType {
-                                        color: textColumn.textColor
-                                        visible: latestHandshake
-                                        Layout.fillWidth: true
+                                    text: qsTr("Creation date: %1").arg(creationDate)
+                                }
 
-                                        text: qsTr("Latest handshake: %1").arg(latestHandshake)
-                                    }
+                                ParagraphTextType {
+                                    color: AmneziaStyle.color.mutedGray
+                                    visible: latestHandshake
+                                    Layout.fillWidth: true
 
-                                    ParagraphTextType {
-                                        color: textColumn.textColor
-                                        visible: dataReceived
-                                        Layout.fillWidth: true
+                                    text: qsTr("Latest handshake: %1").arg(latestHandshake)
+                                }
 
-                                        text: qsTr("Data received: %1").arg(dataReceived)
-                                    }
+                                ParagraphTextType {
+                                    color: AmneziaStyle.color.mutedGray
+                                    visible: dataReceived
+                                    Layout.fillWidth: true
 
-                                    ParagraphTextType {
-                                        color: textColumn.textColor
-                                        visible: dataSent
-                                        Layout.fillWidth: true
+                                    text: qsTr("Data received: %1").arg(dataReceived)
+                                }
 
-                                        text: qsTr("Data sent: %1").arg(dataSent)
-                                    }
+                                ParagraphTextType {
+                                    color: AmneziaStyle.color.mutedGray
+                                    visible: dataSent
+                                    Layout.fillWidth: true
+
+                                    text: qsTr("Data sent: %1").arg(dataSent)
+                                }
+
+                                ParagraphTextType {
+                                    color: AmneziaStyle.color.mutedGray
+                                    visible: allowedIps
+                                    Layout.fillWidth: true
+
+                                    text: qsTr("Allowed IPs: %1").arg(allowedIps)
                                 }
 
                                 Item {
@@ -845,11 +856,11 @@ PageType {
                                     Layout.fillWidth: true
                                     Layout.topMargin: 24
 
-                                    defaultColor: "transparent"
-                                    hoveredColor: Qt.rgba(1, 1, 1, 0.08)
-                                    pressedColor: Qt.rgba(1, 1, 1, 0.12)
-                                    disabledColor: "#878B91"
-                                    textColor: "#D7D8DB"
+                                    defaultColor: AmneziaStyle.color.transparent
+                                    hoveredColor: AmneziaStyle.color.translucentWhite
+                                    pressedColor: AmneziaStyle.color.sheerWhite
+                                    disabledColor: AmneziaStyle.color.mutedGray
+                                    textColor: AmneziaStyle.color.paleGray
                                     borderWidth: 1
 
                                     text: qsTr("Rename")
@@ -937,12 +948,13 @@ PageType {
                                 BasicButtonType {
                                     id: revokeButton
                                     Layout.fillWidth: true
+                                    Layout.topMargin: 8
 
-                                    defaultColor: "transparent"
-                                    hoveredColor: Qt.rgba(1, 1, 1, 0.08)
-                                    pressedColor: Qt.rgba(1, 1, 1, 0.12)
-                                    disabledColor: "#878B91"
-                                    textColor: "#D7D8DB"
+                                    defaultColor: AmneziaStyle.color.transparent
+                                    hoveredColor: AmneziaStyle.color.translucentWhite
+                                    pressedColor: AmneziaStyle.color.sheerWhite
+                                    disabledColor: AmneziaStyle.color.mutedGray
+                                    textColor: AmneziaStyle.color.paleGray
                                     borderWidth: 1
 
                                     text: qsTr("Revoke")

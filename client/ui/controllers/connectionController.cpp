@@ -8,7 +8,7 @@
 #include <QtConcurrent>
 
 #include "core/controllers/vpnConfigurationController.h"
-#include "core/errorstrings.h"
+#include "core/enums/apiEnums.h"
 #include "version.h"
 
 ConnectionController::ConnectionController(const QSharedPointer<ServersModel> &serversModel,
@@ -17,7 +17,6 @@ ConnectionController::ConnectionController(const QSharedPointer<ServersModel> &s
                                            const QSharedPointer<VpnConnection> &vpnConnection, const std::shared_ptr<Settings> &settings,
                                            QObject *parent)
     : QObject(parent),
-      m_apiController(this),
       m_serversModel(serversModel),
       m_containersModel(containersModel),
       m_clientManagementModel(clientManagementModel),
@@ -28,9 +27,7 @@ ConnectionController::ConnectionController(const QSharedPointer<ServersModel> &s
     connect(this, &ConnectionController::connectToVpn, m_vpnConnection.get(), &VpnConnection::connectToVpn, Qt::QueuedConnection);
     connect(this, &ConnectionController::disconnectFromVpn, m_vpnConnection.get(), &VpnConnection::disconnectFromVpn, Qt::QueuedConnection);
 
-    connect(&m_apiController, &ApiController::configUpdated, this,
-            static_cast<void (ConnectionController::*)(const bool, const QJsonObject &, const int)>(&ConnectionController::openConnection));
-    connect(&m_apiController, &ApiController::errorOccurred, this, &ConnectionController::connectionErrorOccurred);
+    connect(this, &ConnectionController::configFromApiUpdated, this, &ConnectionController::continueConnection);
 
     m_state = Vpn::ConnectionState::Disconnected;
 }
@@ -40,21 +37,32 @@ void ConnectionController::openConnection()
 #if !defined(Q_OS_ANDROID) && !defined(Q_OS_IOS)
     if (!Utils::processIsRunning(Utils::executable(SERVICE_NAME, false), true))
     {
-        emit connectionErrorOccurred(errorString(ErrorCode::AmneziaServiceNotRunning));
+        emit connectionErrorOccurred(ErrorCode::AmneziaServiceNotRunning);
         return;
     }
 #endif
 
     int serverIndex = m_serversModel->getDefaultServerIndex();
     QJsonObject serverConfig = m_serversModel->getServerConfig(serverIndex);
+    auto configVersion = serverConfig.value(config_key::configVersion).toInt();
 
     emit m_vpnConnection->connectionStateChanged(Vpn::ConnectionState::Preparing);
 
-    if (serverConfig.value(config_key::configVersion).toInt()
+    if (configVersion == ApiConfigSources::Telegram
         && !m_serversModel->data(serverIndex, ServersModel::Roles::HasInstalledContainers).toBool()) {
-        m_apiController.updateServerConfigFromApi(m_settings->getInstallationUuid(true), serverIndex, serverConfig);
+        emit updateApiConfigFromTelegram();
+        } else if (configVersion == ApiConfigSources::AmneziaGateway
+        && !m_serversModel->data(serverIndex, ServersModel::Roles::HasInstalledContainers).toBool()) {
+        emit updateApiConfigFromGateway();
+    } else if (configVersion && m_serversModel->isApiKeyExpired(serverIndex)) {
+        qDebug() << "attempt to update api config by end_date event";
+        if (configVersion == ApiConfigSources::Telegram) {
+            emit updateApiConfigFromTelegram();
+        } else {
+            emit updateApiConfigFromGateway();
+        }
     } else {
-        openConnection(false, serverConfig, serverIndex);
+        continueConnection();
     }
 }
 
@@ -63,9 +71,9 @@ void ConnectionController::closeConnection()
     emit disconnectFromVpn();
 }
 
-QString ConnectionController::getLastConnectionError()
+ErrorCode ConnectionController::getLastConnectionError()
 {
-    return errorString(m_vpnConnection->lastError());
+    return m_vpnConnection->lastError();
 }
 
 void ConnectionController::onConnectionStateChanged(Vpn::ConnectionState state)
@@ -124,7 +132,7 @@ void ConnectionController::onConnectionStateChanged(Vpn::ConnectionState state)
 void ConnectionController::onCurrentContainerUpdated()
 {
     if (m_isConnected || m_isConnectionInProgress) {
-        emit reconnectWithUpdatedContainer(tr("Settings updated successfully, Reconnnection..."));
+        emit reconnectWithUpdatedContainer(tr("Settings updated successfully, reconnnection..."));
         openConnection();
     } else {
         emit reconnectWithUpdatedContainer(tr("Settings updated successfully"));
@@ -186,12 +194,11 @@ bool ConnectionController::isProtocolConfigExists(const QJsonObject &containerCo
     return true;
 }
 
-void ConnectionController::openConnection(const bool updateConfig, const QJsonObject &config, const int serverIndex)
+void ConnectionController::continueConnection()
 {
-    // Update config for this server as it was received from API
-    if (updateConfig) {
-        m_serversModel->editServer(config, serverIndex);
-    }
+    int serverIndex = m_serversModel->getDefaultServerIndex();
+    QJsonObject serverConfig = m_serversModel->getServerConfig(serverIndex);
+    auto configVersion = serverConfig.value(config_key::configVersion).toInt();
 
     if (!m_serversModel->data(serverIndex, ServersModel::Roles::HasInstalledContainers).toBool()) {
         emit noInstalledContainers();
@@ -218,13 +225,13 @@ void ConnectionController::openConnection(const bool updateConfig, const QJsonOb
     ServerCredentials credentials = m_serversModel->getServerCredentials(serverIndex);
     ErrorCode errorCode = updateProtocolConfig(container, credentials, containerConfig, serverController);
     if (errorCode != ErrorCode::NoError) {
-        emit connectionErrorOccurred(errorString(errorCode));
+        emit connectionErrorOccurred(errorCode);
         return;
     }
 
     auto dns = m_serversModel->getDnsPair(serverIndex);
 
-    auto vpnConfiguration = vpnConfigurationController.createVpnConfiguration(dns, config, containerConfig, container, errorCode);
+    auto vpnConfiguration = vpnConfigurationController.createVpnConfiguration(dns, serverConfig, containerConfig, container, errorCode);
     if (errorCode != ErrorCode::NoError) {
         emit connectionErrorOccurred(tr("unable to create configuration"));
         return;

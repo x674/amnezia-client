@@ -51,7 +51,14 @@ void SystemController::saveFile(QString fileName, const QString &data)
     return;
 #else
     QFileInfo fi(fileName);
-    QDesktopServices::openUrl(fi.absoluteDir().absolutePath());
+
+#ifdef Q_OS_MAC
+    const auto url = "file://" + fi.absoluteDir().absolutePath();
+#else
+    const auto url = fi.absoluteDir().absolutePath();
+#endif
+
+    QDesktopServices::openUrl(url);
 #endif
 }
 
@@ -117,4 +124,13 @@ QString SystemController::getFileName(const QString &acceptLabel, const QString 
 void SystemController::setQmlRoot(QObject *qmlRoot)
 {
     m_qmlRoot = qmlRoot;
+}
+
+bool SystemController::isAuthenticated()
+{
+#ifdef Q_OS_ANDROID
+    return AndroidController::instance()->requestAuthentication();
+#else
+    return true;
+#endif
 }

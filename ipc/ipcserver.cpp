@@ -9,6 +9,7 @@
 #include "logger.h"
 #include "router.h"
 
+#include "../core/networkUtilities.h"
 #include "../client/protocols/protocols_defs.h"
 #ifdef Q_OS_WIN
     #include "../client/platforms/windows/daemon/windowsdaemon.h"
@@ -156,8 +157,13 @@ void IpcServer::cleanUp()
     qDebug() << "IpcServer::cleanUp";
 #endif
 
-    Logger::deinit();
+    Logger::deInit();
     Logger::cleanUp();
+}
+
+void IpcServer::clearLogs()
+{
+    Logger::clearLogs(true);
 }
 
 bool IpcServer::createTun(const QString &dev, const QString &subnet)
@@ -191,9 +197,9 @@ void IpcServer::setLogsEnabled(bool enabled)
 #endif
 
     if (enabled) {
-        Logger::init();
+        Logger::init(true);
     } else {
-        Logger::deinit();
+        Logger::deInit();
     }
 }
 
@@ -215,7 +221,7 @@ bool IpcServer::enableKillSwitch(const QJsonObject &configStr, int vpnAdapterInd
     if (splitTunnelType == 0) {
         blockAll = true;
         allowNets = true;
-        allownets.append(configStr.value(amnezia::config_key::hostName).toString());
+        allownets.append(configStr.value("vpnServer").toString());
     } else if (splitTunnelType == 1) {
         blockNets = true;
         for (auto v : splitTunnelSites) {
@@ -224,7 +230,7 @@ bool IpcServer::enableKillSwitch(const QJsonObject &configStr, int vpnAdapterInd
     } else if (splitTunnelType == 2) {
         blockAll = true;
         allowNets = true;
-        allownets.append(configStr.value(amnezia::config_key::hostName).toString());
+        allownets.append(configStr.value("vpnServer").toString());
         for (auto v : splitTunnelSites) {
             allownets.append(v.toString());
         }
@@ -335,7 +341,7 @@ bool IpcServer::enablePeerTraffic(const QJsonObject &configStr)
         }
     }
 
-    config.m_excludedAddresses.append(configStr.value(amnezia::config_key::hostName).toString());
+    config.m_excludedAddresses.append(configStr.value("vpnServer").toString());
     if (splitTunnelType == 2) {
         for (auto v : splitTunnelSites) {
             QString ipRange = v.toString();
@@ -357,7 +363,6 @@ bool IpcServer::enablePeerTraffic(const QJsonObject &configStr)
 
     WindowsDaemon::instance()->prepareActivation(config, inetAdapterIndex);
     WindowsDaemon::instance()->activateSplitTunnel(config, vpnAdapterIndex);
-    return true;
 #endif
     return true;
 }
