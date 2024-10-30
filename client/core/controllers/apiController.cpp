@@ -1,5 +1,8 @@
 #include "apiController.h"
 
+#include <algorithm>
+#include <random>
+
 #include <QEventLoop>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
@@ -11,6 +14,7 @@
 #include "amnezia_application.h"
 #include "configurators/wireguard_configurator.h"
 #include "core/enums/apiEnums.h"
+#include "utilities.h"
 #include "version.h"
 
 namespace
@@ -33,6 +37,7 @@ namespace
         constexpr char userCountryCode[] = "user_country_code";
         constexpr char serverCountryCode[] = "server_country_code";
         constexpr char serviceType[] = "service_type";
+        constexpr char serviceInfo[] = "service_info";
 
         constexpr char aesKey[] = "aes_key";
         constexpr char aesIv[] = "aes_iv";
@@ -40,9 +45,10 @@ namespace
 
         constexpr char apiPayload[] = "api_payload";
         constexpr char keyPayload[] = "key_payload";
-    }
 
-    const QStringList proxyStorageUrl = { "" };
+        constexpr char apiConfig[] = "api_config";
+        constexpr char authData[] = "auth_data";
+    }
 
     ErrorCode checkErrors(const QList<QSslError> &sslErrors, QNetworkReply *reply)
     {
@@ -62,6 +68,28 @@ namespace
             qDebug() << reply->attribute(QNetworkRequest::HttpStatusCodeAttribute);
             return ErrorCode::ApiConfigDownloadError;
         }
+    }
+
+    bool shouldBypassProxy(QNetworkReply *reply, const QByteArray &responseBody, bool checkEncryption, const QByteArray &key = "",
+                           const QByteArray &iv = "", const QByteArray &salt = "")
+    {
+        if (reply->error() == QNetworkReply::NetworkError::OperationCanceledError
+            || reply->error() == QNetworkReply::NetworkError::TimeoutError) {
+            qDebug() << "Timeout occurred";
+            return true;
+        } else if (responseBody.contains("html")) {
+            qDebug() << "The response contains an html tag";
+            return true;
+        } else if (checkEncryption) {
+            try {
+                QSimpleCrypto::QBlockCipher blockCipher;
+                static_cast<void>(blockCipher.decryptAesBlockCipher(responseBody, key, iv, "", salt));
+            } catch (...) {
+                qDebug() << "Failed to decrypt the data";
+                return true;
+            }
+        }
+        return false;
     }
 }
 
@@ -94,8 +122,8 @@ void ApiController::fillServerConfig(const QString &protocol, const ApiControlle
         configStr.replace("$OPENVPN_PRIV_KEY", apiPayloadData.certRequest.privKey);
     } else if (protocol == configKey::awg) {
         configStr.replace("$WIREGUARD_CLIENT_PRIVATE_KEY", apiPayloadData.wireGuardClientPrivKey);
-        auto serverConfig = QJsonDocument::fromJson(configStr.toUtf8()).object();
-        auto containers = serverConfig.value(config_key::containers).toArray();
+        auto newServerConfig = QJsonDocument::fromJson(configStr.toUtf8()).object();
+        auto containers = newServerConfig.value(config_key::containers).toArray();
         if (containers.isEmpty()) {
             return; // todo process error
         }
@@ -114,24 +142,34 @@ void ApiController::fillServerConfig(const QString &protocol, const ApiControlle
         containerConfig[config_key::transportPacketMagicHeader] = protocolConfig.value(config_key::transportPacketMagicHeader);
         container[containerName] = containerConfig;
         containers.replace(0, container);
-        serverConfig[config_key::containers] = containers;
-        configStr = QString(QJsonDocument(serverConfig).toJson());
+        newServerConfig[config_key::containers] = containers;
+        configStr = QString(QJsonDocument(newServerConfig).toJson());
     }
 
-    QJsonObject apiConfig = QJsonDocument::fromJson(configStr.toUtf8()).object();
-    serverConfig[config_key::dns1] = apiConfig.value(config_key::dns1);
-    serverConfig[config_key::dns2] = apiConfig.value(config_key::dns2);
-    serverConfig[config_key::containers] = apiConfig.value(config_key::containers);
-    serverConfig[config_key::hostName] = apiConfig.value(config_key::hostName);
+    QJsonObject newServerConfig = QJsonDocument::fromJson(configStr.toUtf8()).object();
+    serverConfig[config_key::dns1] = newServerConfig.value(config_key::dns1);
+    serverConfig[config_key::dns2] = newServerConfig.value(config_key::dns2);
+    serverConfig[config_key::containers] = newServerConfig.value(config_key::containers);
+    serverConfig[config_key::hostName] = newServerConfig.value(config_key::hostName);
 
-    if (apiConfig.value(config_key::configVersion).toInt() == ApiConfigSources::AmneziaGateway) {
-        serverConfig[config_key::configVersion] = apiConfig.value(config_key::configVersion);
-        serverConfig[config_key::description] = apiConfig.value(config_key::description);
-        serverConfig[config_key::name] = apiConfig.value(config_key::name);
+    if (newServerConfig.value(config_key::configVersion).toInt() == ApiConfigSources::AmneziaGateway) {
+        serverConfig[config_key::configVersion] = newServerConfig.value(config_key::configVersion);
+        serverConfig[config_key::description] = newServerConfig.value(config_key::description);
+        serverConfig[config_key::name] = newServerConfig.value(config_key::name);
     }
 
-    auto defaultContainer = apiConfig.value(config_key::defaultContainer).toString();
+    auto defaultContainer = newServerConfig.value(config_key::defaultContainer).toString();
     serverConfig[config_key::defaultContainer] = defaultContainer;
+
+    QVariantMap map = serverConfig.value(configKey::apiConfig).toObject().toVariantMap();
+    map.insert(newServerConfig.value(configKey::apiConfig).toObject().toVariantMap());
+    auto apiConfig = QJsonObject::fromVariantMap(map);
+
+    if (newServerConfig.value(config_key::configVersion).toInt() == ApiConfigSources::AmneziaGateway) {
+        apiConfig.insert(configKey::serviceInfo, QJsonDocument::fromJson(apiResponseBody).object().value(configKey::serviceInfo).toObject());
+    }
+
+    serverConfig[configKey::apiConfig] = apiConfig;
 
     return;
 }
@@ -145,6 +183,15 @@ QStringList ApiController::getProxyUrls()
     QEventLoop wait;
     QList<QSslError> sslErrors;
     QNetworkReply *reply;
+
+    QStringList proxyStorageUrl;
+    if (m_isDevEnvironment) {
+        proxyStorageUrl = QStringList { DEV_S3_ENDPOINT };
+    } else {
+        proxyStorageUrl = QStringList { PROD_S3_ENDPOINT };
+    }
+
+    QByteArray key = m_isDevEnvironment ? DEV_AGW_PUBLIC_KEY : PROD_AGW_PUBLIC_KEY;
 
     for (const auto &proxyStorageUrl : proxyStorageUrl) {
         request.setUrl(proxyStorageUrl);
@@ -166,11 +213,23 @@ QStringList ApiController::getProxyUrls()
     EVP_PKEY *privateKey = nullptr;
     QByteArray responseBody;
     try {
-        QByteArray key = PROD_PROXY_STORAGE_KEY;
-        QSimpleCrypto::QRsa rsa;
-        privateKey = rsa.getPrivateKeyFromByteArray(key, "");
-        responseBody = rsa.decrypt(encryptedResponseBody, privateKey, RSA_PKCS1_PADDING);
+        if (!m_isDevEnvironment) {
+            QCryptographicHash hash(QCryptographicHash::Sha512);
+            hash.addData(key);
+            QByteArray hashResult = hash.result().toHex();
+
+            QByteArray key = QByteArray::fromHex(hashResult.left(64));
+            QByteArray iv = QByteArray::fromHex(hashResult.mid(64, 32));
+
+            QByteArray ba = QByteArray::fromBase64(encryptedResponseBody);
+
+            QSimpleCrypto::QBlockCipher blockCipher;
+            responseBody = blockCipher.decryptAesBlockCipher(ba, key, iv);
+        } else {
+            responseBody = encryptedResponseBody;
+        }
     } catch (...) {
+        Utils::logException();
         qCritical() << "error loading private key from environment variables or decrypting payload";
         return {};
     }
@@ -292,38 +351,44 @@ ErrorCode ApiController::getServicesList(QByteArray &responseBody)
     connect(reply, &QNetworkReply::sslErrors, [this, &sslErrors](const QList<QSslError> &errors) { sslErrors = errors; });
     wait.exec();
 
-    if (reply->error() == QNetworkReply::NetworkError::TimeoutError || reply->error() == QNetworkReply::NetworkError::OperationCanceledError) {
+    responseBody = reply->readAll();
+
+    if (sslErrors.isEmpty() && shouldBypassProxy(reply, responseBody, false)) {
         m_proxyUrls = getProxyUrls();
+        std::random_device randomDevice;
+        std::mt19937 generator(randomDevice());
+        std::shuffle(m_proxyUrls.begin(), m_proxyUrls.end(), generator);
         for (const QString &proxyUrl : m_proxyUrls) {
+            qDebug() << "Go to the next endpoint";
             request.setUrl(QString("%1v1/services").arg(proxyUrl));
+            reply->deleteLater(); // delete the previous reply
             reply = amnApp->manager()->get(request);
 
             QObject::connect(reply, &QNetworkReply::finished, &wait, &QEventLoop::quit);
             connect(reply, &QNetworkReply::sslErrors, [this, &sslErrors](const QList<QSslError> &errors) { sslErrors = errors; });
             wait.exec();
-            if (reply->error() != QNetworkReply::NetworkError::TimeoutError
-                && reply->error() != QNetworkReply::NetworkError::OperationCanceledError) {
+
+            responseBody = reply->readAll();
+            if (!sslErrors.isEmpty() || !shouldBypassProxy(reply, responseBody, false)) {
                 break;
             }
-            reply->deleteLater();
         }
     }
 
-    responseBody = reply->readAll();
     auto errorCode = checkErrors(sslErrors, reply);
     reply->deleteLater();
     return errorCode;
 }
 
 ErrorCode ApiController::getConfigForService(const QString &installationUuid, const QString &userCountryCode, const QString &serviceType,
-                                             const QString &protocol, const QString &serverCountryCode, QJsonObject &serverConfig)
+                                             const QString &protocol, const QString &serverCountryCode, const QJsonObject &authData,
+                                             QJsonObject &serverConfig)
 {
 #ifdef Q_OS_IOS
     IosController::Instance()->requestInetAccess();
     QThread::msleep(10);
 #endif
 
-    QNetworkAccessManager manager;
     QNetworkRequest request;
     request.setTransferTimeout(7000);
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
@@ -339,6 +404,9 @@ ErrorCode ApiController::getConfigForService(const QString &installationUuid, co
     }
     apiPayload[configKey::serviceType] = serviceType;
     apiPayload[configKey::uuid] = installationUuid;
+    if (!authData.isEmpty()) {
+        apiPayload[configKey::authData] = authData;
+    }
 
     QSimpleCrypto::QBlockCipher blockCipher;
     QByteArray key = blockCipher.generatePrivateSalt(32);
@@ -361,6 +429,7 @@ ErrorCode ApiController::getConfigForService(const QString &installationUuid, co
             QSimpleCrypto::QRsa rsa;
             publicKey = rsa.getPublicKeyFromByteArray(rsaKey);
         } catch (...) {
+            Utils::logException();
             qCritical() << "error loading public key from environment variables";
             return ErrorCode::ApiMissingAgwPublicKey;
         }
@@ -370,14 +439,16 @@ ErrorCode ApiController::getConfigForService(const QString &installationUuid, co
 
         encryptedApiPayload = blockCipher.encryptAesBlockCipher(QJsonDocument(apiPayload).toJson(), key, iv, "", salt);
     } catch (...) { // todo change error handling in QSimpleCrypto?
+        Utils::logException();
         qCritical() << "error when encrypting the request body";
+        return ErrorCode::ApiConfigDecryptionError;
     }
 
     QJsonObject requestBody;
     requestBody[configKey::keyPayload] = QString(encryptedKeyPayload.toBase64());
     requestBody[configKey::apiPayload] = QString(encryptedApiPayload.toBase64());
 
-    QNetworkReply *reply = manager.post(request, QJsonDocument(requestBody).toJson());
+    QNetworkReply *reply = amnApp->manager()->post(request, QJsonDocument(requestBody).toJson());
 
     QEventLoop wait;
     connect(reply, &QNetworkReply::finished, &wait, &QEventLoop::quit);
@@ -386,37 +457,43 @@ ErrorCode ApiController::getConfigForService(const QString &installationUuid, co
     connect(reply, &QNetworkReply::sslErrors, [this, &sslErrors](const QList<QSslError> &errors) { sslErrors = errors; });
     wait.exec();
 
-    if (reply->error() == QNetworkReply::NetworkError::TimeoutError || reply->error() == QNetworkReply::NetworkError::OperationCanceledError) {
-        if (m_proxyUrls.isEmpty()) {
-            m_proxyUrls = getProxyUrls();
-        }
+    auto encryptedResponseBody = reply->readAll();
+
+    if (sslErrors.isEmpty() && shouldBypassProxy(reply, encryptedResponseBody, true, key, iv, salt)) {
+        m_proxyUrls = getProxyUrls();
+        std::random_device randomDevice;
+        std::mt19937 generator(randomDevice());
+        std::shuffle(m_proxyUrls.begin(), m_proxyUrls.end(), generator);
         for (const QString &proxyUrl : m_proxyUrls) {
+            qDebug() << "Go to the next endpoint";
             request.setUrl(QString("%1v1/config").arg(proxyUrl));
-            reply = manager.post(request, QJsonDocument(requestBody).toJson());
+            reply->deleteLater(); // delete the previous reply
+            reply = amnApp->manager()->post(request, QJsonDocument(requestBody).toJson());
 
             QObject::connect(reply, &QNetworkReply::finished, &wait, &QEventLoop::quit);
             connect(reply, &QNetworkReply::sslErrors, [this, &sslErrors](const QList<QSslError> &errors) { sslErrors = errors; });
             wait.exec();
-            if (reply->error() != QNetworkReply::NetworkError::TimeoutError
-                && reply->error() != QNetworkReply::NetworkError::OperationCanceledError) {
+
+            encryptedResponseBody = reply->readAll();
+            if (!sslErrors.isEmpty() || !shouldBypassProxy(reply, encryptedResponseBody, true, key, iv, salt)) {
                 break;
             }
-            reply->deleteLater();
         }
     }
 
     auto errorCode = checkErrors(sslErrors, reply);
+    reply->deleteLater();
     if (errorCode) {
         return errorCode;
     }
 
-    auto encryptedResponseBody = reply->readAll();
-    reply->deleteLater();
     try {
         auto responseBody = blockCipher.decryptAesBlockCipher(encryptedResponseBody, key, iv, "", salt);
         fillServerConfig(protocol, apiPayloadData, responseBody, serverConfig);
     } catch (...) { // todo change error handling in QSimpleCrypto?
+        Utils::logException();
         qCritical() << "error when decrypting the request body";
+        return ErrorCode::ApiConfigDecryptionError;
     }
 
     return errorCode;
