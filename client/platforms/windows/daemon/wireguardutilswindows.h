@@ -9,10 +9,13 @@
 
 #include <QHostAddress>
 #include <QObject>
+#include <QPointer>
 
 #include "daemon/wireguardutils.h"
 #include "windowsroutemonitor.h"
 #include "windowstunnelservice.h"
+
+class WindowsRouteMonitor;
 
 class WireguardUtilsWindows final : public WireguardUtils {
   Q_OBJECT
@@ -39,6 +42,8 @@ class WireguardUtilsWindows final : public WireguardUtils {
   bool addExclusionRoute(const IPAddress& prefix) override;
   bool deleteExclusionRoute(const IPAddress& prefix) override;
 
+  WireguardUtilsWindows::excludeLocalNetworks(const QList<IPAddress>& addresses) override;
+
  signals:
   void backendFailure();
 
@@ -47,7 +52,7 @@ class WireguardUtilsWindows final : public WireguardUtils {
 
   quint64 m_luid = 0;
   WindowsTunnelService m_tunnel;
-  WindowsRouteMonitor m_routeMonitor;
+  QPointer<WindowsRouteMonitor> m_routeMonitor;
 };
 
 #endif  // WIREGUARDUTILSWINDOWS_H

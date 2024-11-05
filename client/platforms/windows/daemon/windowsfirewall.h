@@ -18,7 +18,7 @@
 #include <QObject>
 #include <QString>
 
-#include "../client/daemon/interfaceconfig.h"
+#include "interfaceconfig.h"
 
 class IpAdressRange;
 struct FWP_VALUE0_;
@@ -31,7 +31,8 @@ class WindowsFirewall final : public QObject {
   static WindowsFirewall* instance();
   bool init();
 
-  bool enableKillSwitch(int vpnAdapterIndex);
+  bool enableInterface(int vpnAdapterIndex);
+  bool enableLanBypass(const QList<IPAddress>& ranges);
   bool enablePeerTraffic(const InterfaceConfig& config);
   bool disablePeerTraffic(const QString& pubkey);
   bool disableKillSwitch();
@@ -50,11 +51,10 @@ class WindowsFirewall final : public QObject {
   bool blockTrafficTo(const IPAddress& addr, uint8_t weight,
                       const QString& title, const QString& peer = QString());
   bool blockTrafficOnPort(uint port, uint8_t weight, const QString& title);
+  bool allowTrafficTo(const IPAddress& addr, int weight, const QString& title,
+                      const QString& peer = QString());
   bool allowTrafficTo(const QHostAddress& targetIP, uint port, int weight,
                       const QString& title, const QString& peer = QString());
-  bool allowTrafficToRange(const IPAddress& addr, uint8_t weight,
-                           const QString& title,
-                           const QString& peer);
   bool allowTrafficOfAdapter(int networkAdapter, uint8_t weight,
                              const QString& title);
   bool allowDHCPTraffic(uint8_t weight, const QString& title);
