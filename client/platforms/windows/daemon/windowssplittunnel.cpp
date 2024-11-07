@@ -559,11 +559,6 @@ std::vector<uint8_t> WindowsSplitTunnel::generateProcessBlob() {
   return out;
 }
 
-void WindowsSplitTunnel::close() {
-  CloseHandle(m_driver);
-  m_driver = INVALID_HANDLE_VALUE;
-}
-
 // static
 SC_HANDLE WindowsSplitTunnel::installDriver() {
   LPCWSTR displayName = L"Amnezia Split Tunnel Service";
