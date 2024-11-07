@@ -40,6 +40,8 @@ public slots:
                           const QSharedPointer<ServerController> &serverController);
     ErrorCode appendClient(const DockerContainer container, const ServerCredentials &credentials, const QJsonObject &containerConfig,
                            const QString &clientName, const QSharedPointer<ServerController> &serverController);
+    ErrorCode appendClient(QJsonObject &protocolConfig, const QString &clientName,const DockerContainer container,
+                           const ServerCredentials &credentials, const QSharedPointer<ServerController> &serverController);
     ErrorCode appendClient(const QString &clientId, const QString &clientName, const DockerContainer container,
                            const ServerCredentials &credentials, const QSharedPointer<ServerController> &serverController);
     ErrorCode renameClient(const int row, const QString &userName, const DockerContainer container, const ServerCredentials &credentials,

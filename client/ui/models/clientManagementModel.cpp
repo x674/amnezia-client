@@ -403,6 +403,12 @@ ErrorCode ClientManagementModel::appendClient(const DockerContainer container, c
     }
 
     auto protocolConfig = ContainerProps::getProtocolConfigFromContainer(protocol, containerConfig);
+    return appendClient(protocolConfig, clientName, container, credentials, serverController);
+}
+
+ErrorCode ClientManagementModel::appendClient(QJsonObject &protocolConfig, const QString &clientName, const DockerContainer container,
+                                              const ServerCredentials &credentials, const QSharedPointer<ServerController> &serverController)
+{
     QString clientId;
     if (container == DockerContainer::Xray) {
         if (!protocolConfig.contains("outbounds")) {
