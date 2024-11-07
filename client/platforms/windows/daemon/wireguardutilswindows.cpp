@@ -24,8 +24,20 @@ namespace {
 Logger logger("WireguardUtilsWindows");
 };  // namespace
 
-WireguardUtilsWindows::WireguardUtilsWindows(QObject* parent)
-    : WireguardUtils(parent), m_tunnel(this) {
+std::unique_ptr<WireguardUtilsWindows> WireguardUtilsWindows::create(
+    WindowsFirewall* fw, QObject* parent) {
+  if (!fw) {
+    logger.error() << "WireguardUtilsWindows::create: no wfp handle";
+    return {};
+  }
+
+  // Can't use make_unique here as the Constructor is private :(
+  auto utils = new WireguardUtilsWindows(parent, fw);
+  return std::unique_ptr<WireguardUtilsWindows>(utils);
+}
+
+WireguardUtilsWindows::WireguardUtilsWindows(QObject* parent, WindowsFirewall* fw)
+    : WireguardUtils(parent), m_tunnel(this), m_firewall(fw) {
   MZ_COUNT_CTOR(WireguardUtilsWindows);
   logger.debug() << "WireguardUtilsWindows created.";
 
@@ -120,7 +132,7 @@ bool WireguardUtilsWindows::addInterface(const InterfaceConfig& config) {
     // Enable the windows firewall
     NET_IFINDEX ifindex;
     ConvertInterfaceLuidToIndex(&luid, &ifindex);
-    WindowsFirewall::instance()->enableInterface(ifindex);
+    m_firewall->enableInterface(ifindex);
   }
 
   logger.debug() << "Registration completed";
@@ -132,7 +144,7 @@ bool WireguardUtilsWindows::deleteInterface() {
     m_routeMonitor->deleteLater();
   }
 
-  WindowsFirewall::instance()->disableKillSwitch();
+  m_firewall->disableKillSwitch();
   m_tunnel.stop();
   return true;
 }
@@ -145,7 +157,7 @@ bool WireguardUtilsWindows::updatePeer(const InterfaceConfig& config) {
 
   if (config.m_killSwitchEnabled) {
     // Enable the windows firewall for this peer.
-    WindowsFirewall::instance()->enablePeerTraffic(config);
+    m_firewall->enablePeerTraffic(config);
   }
   logger.debug() << "Configuring peer" << publicKey.toHex()
                  << "via" << config.m_serverIpv4AddrIn;
@@ -196,7 +208,7 @@ bool WireguardUtilsWindows::deletePeer(const InterfaceConfig& config) {
   }
 
   // Disable the windows firewall for this peer.
-  WindowsFirewall::instance()->disablePeerTraffic(config.m_serverPublicKey);
+  m_firewall->disablePeerTraffic(config.m_serverPublicKey);
 
   QString message;
   QTextStream out(&message);
@@ -308,7 +320,7 @@ bool WireguardUtilsWindows::excludeLocalNetworks(
     }
   }
   // Permit LAN traffic through the firewall.
-  if (!WindowsFirewall::instance()->enableLanBypass(addresses)) {
+  if (!m_firewall->enableLanBypass(addresses)) {
     result = false;
   }
 

@@ -10,6 +10,7 @@
 #include <initguid.h>
 #include <netfw.h>
 #include <qaccessible.h>
+#include <qassert.h>
 #include <stdio.h>
 #include <windows.h>
 
@@ -47,18 +48,13 @@ constexpr uint8_t HIGH_WEIGHT = 13;
 constexpr uint8_t MAX_WEIGHT = 15;
 }  // namespace
 
-WindowsFirewall* WindowsFirewall::instance() {
-  if (s_instance == nullptr) {
-    s_instance = new WindowsFirewall(qApp);
+WindowsFirewall* WindowsFirewall::create(QObject* parent) {
+  if (s_instance != nullptr) {
+    // Only one instance of the firewall is allowed
+    Q_ASSERT(false);
+    return s_instance;
   }
-  return s_instance;
-}
-
-WindowsFirewall::WindowsFirewall(QObject* parent) : QObject(parent) {
-  MZ_COUNT_CTOR(WindowsFirewall);
-  Q_ASSERT(s_instance == nullptr);
-
-  HANDLE engineHandle = NULL;
+  HANDLE engineHandle = nullptr;
   DWORD result = ERROR_SUCCESS;
   // Use dynamic sessions for efficiency and safety:
   //  -> Filtering policy objects are deleted even when the application crashes/
@@ -69,15 +65,24 @@ WindowsFirewall::WindowsFirewall(QObject* parent) : QObject(parent) {
 
   logger.debug() << "Opening the filter engine.";
 
-  result =
-      FwpmEngineOpen0(NULL, RPC_C_AUTHN_WINNT, NULL, &session, &engineHandle);
+  result = FwpmEngineOpen0(nullptr, RPC_C_AUTHN_WINNT, nullptr, &session,
+                           &engineHandle);
 
   if (result != ERROR_SUCCESS) {
     WindowsUtils::windowsLog("FwpmEngineOpen0 failed");
-    return;
+    return nullptr;
   }
   logger.debug() << "Filter engine opened successfully.";
-  m_sessionHandle = engineHandle;
+  if (!initSublayer()) {
+    return nullptr;
+  }
+  s_instance = new WindowsFirewall(engineHandle, parent);
+  return s_instance;
+}
+
+WindowsFirewall::WindowsFirewall(HANDLE session, QObject* parent)
+    : QObject(parent), m_sessionHandle(session) {
+  MZ_COUNT_CTOR(WindowsFirewall);
 }
 
 WindowsFirewall::~WindowsFirewall() {
@@ -87,15 +92,8 @@ WindowsFirewall::~WindowsFirewall() {
   }
 }
 
-bool WindowsFirewall::init() {
-  if (m_init) {
-    logger.warning() << "Alread initialised FW_WFP layer";
-    return true;
-  }
-  if (m_sessionHandle == INVALID_HANDLE_VALUE) {
-    logger.error() << "Cant Init Sublayer with invalid wfp handle";
-    return false;
-  }
+// static
+bool WindowsFirewall::initSublayer() {
   // If we were not able to aquire a handle, this will fail anyway.
   // We need to open up another handle because of wfp rules:
   // If a wfp resource was created with SESSION_DYNAMIC,
@@ -155,7 +153,6 @@ bool WindowsFirewall::init() {
     return false;
   }
   logger.debug() << "Initialised Sublayer";
-  m_init = true;
   return true;
 }
 
@@ -188,7 +185,7 @@ bool WindowsFirewall::enableInterface(int vpnAdapterIndex) {
   FW_OK(allowDHCPTraffic(MED_WEIGHT, "Allow DHCP Traffic"));
   FW_OK(allowHyperVTraffic(MED_WEIGHT, "Allow Hyper-V Traffic"));
   FW_OK(allowTrafficForAppOnAll(getCurrentPath(), MAX_WEIGHT,
-                                "Allow all for AmneziaVPN.exe"));
+                                "Allow all for Mozilla VPN.exe"));
   FW_OK(blockTrafficOnPort(53, MED_WEIGHT, "Block all DNS"));
   FW_OK(
       allowLoopbackTraffic(MED_WEIGHT, "Allow Loopback traffic on device %1"));
@@ -242,7 +239,7 @@ bool WindowsFirewall::enablePeerTraffic(const InterfaceConfig& config) {
 
   // Build the firewall rules for this peer.
   logger.info() << "Enabling traffic for peer"
-                << config.m_serverPublicKey;
+                << logger.keys(config.m_serverPublicKey);
   if (!blockTrafficTo(config.m_allowedIPAddressRanges, LOW_WEIGHT,
                       "Block Internet", config.m_serverPublicKey)) {
     return false;
@@ -259,17 +256,6 @@ bool WindowsFirewall::enablePeerTraffic(const InterfaceConfig& config) {
       if (!allowTrafficTo(QHostAddress(config.m_serverIpv6Gateway), 53,
                           HIGH_WEIGHT, "Allow extra IPv6 DNS-Server",
                           config.m_serverPublicKey)) {
-        return false;
-      }
-    }
-  }
-
-  if (!config.m_excludedAddresses.empty()) {
-    for (const QString& i : config.m_excludedAddresses) {
-      logger.debug() << "range: " << i;
-
-      if (!allowTrafficTo(i, HIGH_WEIGHT,
-                          "Allow Ecxlude route", config.m_serverPublicKey)) {
         return false;
       }
     }
@@ -298,7 +284,7 @@ bool WindowsFirewall::disablePeerTraffic(const QString& pubkey) {
     return false;
   }
 
-  logger.info() << "Disabling traffic for peer" << pubkey;
+  logger.info() << "Disabling traffic for peer" << logger.keys(pubkey);
   for (const auto& filterID : m_peerRules.values(pubkey)) {
     FwpmFilterDeleteById0(m_sessionHandle, filterID);
     m_peerRules.remove(pubkey, filterID);

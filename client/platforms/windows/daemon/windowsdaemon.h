@@ -5,8 +5,11 @@
 #ifndef WINDOWSDAEMON_H
 #define WINDOWSDAEMON_H
 
+#include <qpointer.h>
+
 #include "daemon/daemon.h"
 #include "dnsutilswindows.h"
+#include "windowsfirewall.h"
 #include "windowssplittunnel.h"
 #include "windowstunnelservice.h"
 #include "wireguardutilswindows.h"
@@ -41,7 +44,8 @@ class WindowsDaemon final : public Daemon {
 
   WireguardUtilsWindows* m_wgutils = nullptr;
   DnsUtilsWindows* m_dnsutils = nullptr;
-  WindowsSplitTunnel m_splitTunnelManager;
+  std::unique_ptr<WindowsSplitTunnel> m_splitTunnelManager;
+  QPointer<WindowsFirewall> m_firewallManager;
 };
 
 #endif  // WINDOWSDAEMON_H
