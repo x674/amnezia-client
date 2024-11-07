@@ -46,10 +46,10 @@ class WindowsSplitTunnel final {
 
   // void excludeApps(const QStringList& paths);
   // Excludes an Application from the VPN
-  void setRules(const QStringList& appPaths);
+  bool excludeApps(const QStringList& appPaths);
 
   // Fetches and Pushed needed info to move to engaged mode
-  void start(int inetAdapterIndex, int vpnAdapterIndex = 0);
+  bool start(int inetAdapterIndex, int vpnAdapterIndex = 0);
   // Deletes Rules and puts the driver into passive mode
   void stop();
 
