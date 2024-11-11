@@ -446,6 +446,7 @@ ErrorCode ClientManagementModel::appendClient(QJsonObject &protocolConfig, const
     } else {
         clientId = protocolConfig.value(config_key::clientId).toString();
     }
+    
     return appendClient(clientId, clientName, container, credentials, serverController);
 }
 
@@ -613,9 +614,46 @@ ErrorCode ClientManagementModel::revokeClient(const QJsonObject &containerConfig
 
     auto protocolConfig = ContainerProps::getProtocolConfigFromContainer(protocol, containerConfig);
 
+    QString clientId;
+    if (container == DockerContainer::Xray) {
+        if (!protocolConfig.contains("outbounds")) {
+            return ErrorCode::InternalError;
+        }
+        QJsonArray outbounds = protocolConfig.value("outbounds").toArray();
+        if (outbounds.isEmpty()) {
+            return ErrorCode::InternalError;
+        }
+        QJsonObject outbound = outbounds[0].toObject();
+        if (!outbound.contains("settings")) {
+            return ErrorCode::InternalError;
+        }
+        QJsonObject settings = outbound["settings"].toObject();
+        if (!settings.contains("vnext")) {
+            return ErrorCode::InternalError;
+        }
+        QJsonArray vnext = settings["vnext"].toArray();
+        if (vnext.isEmpty()) {
+            return ErrorCode::InternalError;
+        }
+        QJsonObject vnextObj = vnext[0].toObject();
+        if (!vnextObj.contains("users")) {
+            return ErrorCode::InternalError;
+        }
+        QJsonArray users = vnextObj["users"].toArray();
+        if (users.isEmpty()) {
+            return ErrorCode::InternalError;
+        }
+        QJsonObject user = users[0].toObject();
+        if (!user.contains("id")) {
+            return ErrorCode::InternalError;
+        }
+        clientId = user["id"].toString();
+    } else {
+        clientId = protocolConfig.value(config_key::clientId).toString();
+    }
+
     int row;
     bool clientExists = false;
-    QString clientId = protocolConfig.value(config_key::clientId).toString();
     for (row = 0; row < rowCount(); row++) {
         auto client = m_clientsTable.at(row).toObject();
         if (clientId == client.value(configKey::clientId).toString()) {
