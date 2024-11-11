@@ -16,5 +16,7 @@
 	<array>
 		<string>$(AppIdentifierPrefix)group.org.amnezia.AmneziaVPN</string>
 	</array>
+	<key>com.apple.security.app-sandbox</key>
+	<true/>
 </dict>
 </plist>
