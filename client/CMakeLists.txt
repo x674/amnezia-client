@@ -430,9 +430,6 @@ if(MACOS_NE)
     add_custom_command(TARGET ${PROJECT} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E make_directory
                 $<TARGET_BUNDLE_DIR:AmneziaVPN>/Contents/Frameworks
-        COMMAND ${CMAKE_COMMAND} -E copy_directory
-                $ENV{QT_MACOS_ROOT_DIR}/lib/QtConcurrent.framework
-                $<TARGET_BUNDLE_DIR:AmneziaVPN>/Contents/Frameworks/QtConcurrent.framework
         
         COMMAND ${CMAKE_COMMAND} -E echo "Copying OpenVPNAdapter.framework..."
         COMMAND ${CMAKE_COMMAND} -E copy_directory
