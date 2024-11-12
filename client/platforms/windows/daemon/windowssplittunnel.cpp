@@ -302,7 +302,7 @@ bool WindowsSplitTunnel::excludeApps(const QStringList& appPaths) {
   return true;
 }
 
-void WindowsSplitTunnel::start(int inetAdapterIndex, int vpnAdapterIndex) {
+bool WindowsSplitTunnel::start(int inetAdapterIndex, int vpnAdapterIndex) {
   // To Start we need to send 2 things:
   // Network info (what is vpn what is network)
   logger.debug() << "Starting SplitTunnel";

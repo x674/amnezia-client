@@ -301,11 +301,11 @@ bool WireguardUtilsWindows::deleteRoutePrefix(const IPAddress& prefix) {
 }
 
 bool WireguardUtilsWindows::addExclusionRoute(const IPAddress& prefix) {
-  return m_routeMonitor.addExclusionRoute(prefix);
+  return m_routeMonitor->addExclusionRoute(prefix);
 }
 
 bool WireguardUtilsWindows::deleteExclusionRoute(const IPAddress& prefix) {
-  return m_routeMonitor.deleteExclusionRoute(prefix);
+  return m_routeMonitor->deleteExclusionRoute(prefix);
 }
 
 bool WireguardUtilsWindows::excludeLocalNetworks(

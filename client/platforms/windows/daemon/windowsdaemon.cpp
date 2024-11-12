@@ -25,6 +25,8 @@
 #include "platforms/windows/windowscommons.h"
 #include "windowsfirewall.h"
 
+#include "core/networkUtilities.h"
+
 namespace {
 Logger logger("WindowsDaemon");
 }
@@ -62,10 +64,10 @@ void WindowsDaemon::prepareActivation(const InterfaceConfig& config, int inetAda
 
 void WindowsDaemon::activateSplitTunnel(const InterfaceConfig& config, int vpnAdapterIndex) {
   if (config.m_vpnDisabledApps.length() > 0) {
-      m_splitTunnelManager.start(m_inetAdapterIndex, vpnAdapterIndex);
-      m_splitTunnelManager.setRules(config.m_vpnDisabledApps);
+      m_splitTunnelManager->start(m_inetAdapterIndex, vpnAdapterIndex);
+      m_splitTunnelManager->excludeApps(config.m_vpnDisabledApps);
   } else {
-      m_splitTunnelManager.stop();
+      m_splitTunnelManager->stop();
   }
 }
 

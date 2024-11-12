@@ -13,6 +13,8 @@
 #include <qassert.h>
 #include <stdio.h>
 #include <windows.h>
+#include <Ws2tcpip.h>
+#include "winsock.h"
 
 #include <QApplication>
 #include <QFileInfo>
@@ -26,7 +28,6 @@
 #include "leakdetector.h"
 #include "logger.h"
 #include "platforms/windows/windowsutils.h"
-#include "winsock.h"
 
 #define IPV6_ADDRESS_SIZE 16
 
@@ -51,7 +52,7 @@ constexpr uint8_t MAX_WEIGHT = 15;
 WindowsFirewall* WindowsFirewall::create(QObject* parent) {
   if (s_instance != nullptr) {
     // Only one instance of the firewall is allowed
-    Q_ASSERT(false);
+//    Q_ASSERT(false);
     return s_instance;
   }
   HANDLE engineHandle = nullptr;
@@ -185,7 +186,7 @@ bool WindowsFirewall::enableInterface(int vpnAdapterIndex) {
   FW_OK(allowDHCPTraffic(MED_WEIGHT, "Allow DHCP Traffic"));
   FW_OK(allowHyperVTraffic(MED_WEIGHT, "Allow Hyper-V Traffic"));
   FW_OK(allowTrafficForAppOnAll(getCurrentPath(), MAX_WEIGHT,
-                                "Allow all for Mozilla VPN.exe"));
+                                "Allow all for AmneziaVPN.exe"));
   FW_OK(blockTrafficOnPort(53, MED_WEIGHT, "Block all DNS"));
   FW_OK(
       allowLoopbackTraffic(MED_WEIGHT, "Allow Loopback traffic on device %1"));
@@ -239,7 +240,7 @@ bool WindowsFirewall::enablePeerTraffic(const InterfaceConfig& config) {
 
   // Build the firewall rules for this peer.
   logger.info() << "Enabling traffic for peer"
-                << logger.keys(config.m_serverPublicKey);
+                << config.m_serverPublicKey;
   if (!blockTrafficTo(config.m_allowedIPAddressRanges, LOW_WEIGHT,
                       "Block Internet", config.m_serverPublicKey)) {
     return false;
@@ -284,7 +285,7 @@ bool WindowsFirewall::disablePeerTraffic(const QString& pubkey) {
     return false;
   }
 
-  logger.info() << "Disabling traffic for peer" << logger.keys(pubkey);
+  logger.info() << "Disabling traffic for peer" << pubkey;
   for (const auto& filterID : m_peerRules.values(pubkey)) {
     FwpmFilterDeleteById0(m_sessionHandle, filterID);
     m_peerRules.remove(pubkey, filterID);
