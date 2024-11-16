@@ -751,10 +751,6 @@ ErrorCode ServerController::isServerPortBusy(const ServerCredentials &credential
 
 ErrorCode ServerController::isUserInSudo(const ServerCredentials &credentials, DockerContainer container)
 {
-    if (credentials.userName == "root") {
-        return ErrorCode::NoError;
-    }
-
     QString stdOut;
     auto cbReadStdOut = [&](const QString &data, libssh::Client &) {
         stdOut += data + "\n";
@@ -768,7 +764,7 @@ ErrorCode ServerController::isUserInSudo(const ServerCredentials &credentials, D
     const QString scriptData = amnezia::scriptData(SharedScriptType::check_user_in_sudo);
     ErrorCode error = runScript(credentials, replaceVars(scriptData, genVarsForScript(credentials)), cbReadStdOut, cbReadStdErr);
 
-    if (!stdOut.contains("sudo"))
+    if (!stdOut.contains("root :") && !stdOut.contains(" sudo"))
         return ErrorCode::ServerUserNotInSudo;
 
     return error;
