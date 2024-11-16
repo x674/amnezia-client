@@ -21,6 +21,9 @@ QString errorString(ErrorCode code) {
     case(ErrorCode::ServerCancelInstallation): errorMessage = QObject::tr("Installation canceled by user"); break;
     case(ErrorCode::ServerUserNotInSudo): errorMessage = QObject::tr("The user does not have permission to use sudo"); break;
     case(ErrorCode::ServerPacketManagerError): errorMessage = QObject::tr("Server error: Packet manager error"); break;
+    case(ErrorCode::SudoPackageIsNotPreinstalled): errorMessage = QObject::tr("The sudo package is not pre-installed"); break;
+    case(ErrorCode::ServerUserNotListedInSudoers): errorMessage = QObject::tr("The user is not listed in sudoers"); break;
+    case(ErrorCode::ServerUserPasswordRequired): errorMessage = QObject::tr("The user's password is required"); break;
 
     // Libssh errors
     case(ErrorCode::SshRequestDeniedError): errorMessage = QObject::tr("SSH request was denied"); break;
