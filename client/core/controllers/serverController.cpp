@@ -766,10 +766,10 @@ ErrorCode ServerController::isUserInSudo(const ServerCredentials &credentials, D
 
     if (!stdOut.contains("root :") && !stdOut.contains(" sudo") && !stdOut.contains(" wheel"))
         return ErrorCode::ServerUserNotInSudo;
-    if (stdOut.contains("command not found"))
+    if (stdOut.contains("sudo:") && stdOut.contains("not found"))
         return ErrorCode::SudoPackageIsNotPreinstalled;
     if (stdOut.contains("sudoers"))
-        return ErrorCode::ServerUserNotListedInSudoers;
+        return ErrorCode::ServerUserNotAllowedInSudoers;
     if (stdOut.contains("password is required"))
         return ErrorCode::ServerUserPasswordRequired;
 
