@@ -39,6 +39,9 @@ ServersModel::ServersModel(std::shared_ptr<Settings> settings, QObject *parent) 
         emit ServersModel::defaultServerNameChanged();
         updateDefaultServerContainersModel();
     });
+
+    connect(this, &ServersModel::processedServerIndexChanged, this, &ServersModel::processedServerChanged);
+    connect(this, &ServersModel::dataChanged, this, &ServersModel::processedServerChanged);
 }
 
 int ServersModel::rowCount(const QModelIndex &parent) const
@@ -77,6 +80,12 @@ bool ServersModel::setData(const QModelIndex &index, const QVariant &value, int 
 
     emit dataChanged(index, index);
     return true;
+}
+
+bool ServersModel::setData(const int index, const QVariant &value, int role)
+{
+    QModelIndex modelIndex = this->index(index);
+    return setData(modelIndex, value, role);
 }
 
 QVariant ServersModel::data(const QModelIndex &index, int role) const
@@ -677,6 +686,18 @@ QVariant ServersModel::getProcessedServerData(const QString roleString)
     }
 
     return {};
+}
+
+bool ServersModel::setProcessedServerData(const QString &roleString, const QVariant &value)
+{
+    const auto roles = roleNames();
+    for (auto it = roles.begin(); it != roles.end(); it++) {
+        if (QString(it.value()) == roleString) {
+            return setData(m_processedServerIndex, value, it.key());
+        }
+    }
+
+    return false;
 }
 
 bool ServersModel::isDefaultServerDefaultContainerHasSplitTunneling()
