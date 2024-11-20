@@ -764,7 +764,7 @@ ErrorCode ServerController::isUserInSudo(const ServerCredentials &credentials, D
     const QString scriptData = amnezia::scriptData(SharedScriptType::check_user_in_sudo);
     ErrorCode error = runScript(credentials, replaceVars(scriptData, genVarsForScript(credentials)), cbReadStdOut, cbReadStdErr);
 
-    if (!stdOut.contains("sudo") && !stdOut.contains("wheel") && (credentials.userName !== "root"))
+    if (!stdOut.contains("sudo") && !stdOut.contains("wheel") && credentials.userName != "root")
         return ErrorCode::ServerUserNotInSudo;
     if (stdOut.contains("sudo:") && stdOut.contains("not found"))
         return ErrorCode::SudoPackageIsNotPreinstalled;
