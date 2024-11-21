@@ -92,7 +92,7 @@ QString XrayConfigurator::prepareServerConfig(const ServerCredentials &credentia
     }
 
     // Restart container
-    QString restartScript = QString("docker restart $CONTAINER_NAME");
+    QString restartScript = QString("sudo docker restart $CONTAINER_NAME");
     errorCode = m_serverController->runScript(
         credentials, 
         m_serverController->replaceVars(restartScript, m_serverController->genVarsForScript(credentials, container))
