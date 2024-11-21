@@ -887,7 +887,7 @@ ErrorCode ClientManagementModel::revokeXray(const int row,
     }
 
     // Restart container
-    QString restartScript = QString("docker restart $CONTAINER_NAME");
+    QString restartScript = QString("sudo docker restart $CONTAINER_NAME");
     error = serverController->runScript(
         credentials, 
         serverController->replaceVars(restartScript, serverController->genVarsForScript(credentials, container))
