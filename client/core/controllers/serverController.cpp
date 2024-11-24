@@ -766,7 +766,7 @@ ErrorCode ServerController::isUserInSudo(const ServerCredentials &credentials, D
 
     if (!stdOut.contains("sudo") && !stdOut.contains("wheel") && credentials.userName != "root")
         return ErrorCode::ServerUserNotInSudo;
-    if (stdOut.contains("sudo:") && stdOut.contains("not found"))
+    if (stdOut.contains("sudo:") && !stdOut.contains("uname:") && stdOut.contains("not found"))
         return ErrorCode::SudoPackageIsNotPreinstalled;
     if (stdOut.contains("sudoers"))
         return ErrorCode::ServerUserNotAllowedInSudoers;
