@@ -159,3 +159,10 @@ bool SystemController::isAuthenticated()
     return true;
 #endif
 }
+
+void SystemController::sendTouch(float x, float y)
+{
+#ifdef Q_OS_ANDROID
+    AndroidController::instance()->sendTouch(x, y);
+#endif
+}

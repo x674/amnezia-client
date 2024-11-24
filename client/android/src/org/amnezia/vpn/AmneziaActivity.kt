@@ -23,9 +23,12 @@ import android.os.Looper
 import android.os.Message
 import android.os.Messenger
 import android.os.ParcelFileDescriptor
+import android.os.SystemClock
 import android.provider.OpenableColumns
 import android.provider.Settings
 import android.view.MotionEvent
+import android.view.View
+import android.view.ViewGroup
 import android.view.WindowManager.LayoutParams
 import android.webkit.MimeTypeMap
 import android.widget.Toast
@@ -800,6 +803,50 @@ class AmneziaActivity : QtActivity() {
         }
     }
 
+    // method to workaround Qt's problem with calling the keyboard on TVs
+    @Suppress("unused")
+    fun sendTouch(x: Float, y: Float) {
+        Log.v(TAG, "Send touch: $x, $y")
+        blockingCall {
+            findQtWindow(window.decorView)?.let {
+                Log.v(TAG, "Send touch to $it")
+                it.dispatchTouchEvent(createEvent(x, y, SystemClock.uptimeMillis(), MotionEvent.ACTION_DOWN))
+                it.dispatchTouchEvent(createEvent(x, y, SystemClock.uptimeMillis(), MotionEvent.ACTION_UP))
+            }
+        }
+    }
+
+    private fun findQtWindow(view: View): View? {
+        Log.v(TAG, "findQtWindow: process $view")
+        if (view::class.simpleName == "QtWindow") return view
+        else if (view is ViewGroup) {
+            for (i in 0 until view.childCount) {
+                val result = findQtWindow(view.getChildAt(i))
+                if (result != null) return result
+            }
+            return null
+        } else return null
+    }
+
+    private fun createEvent(x: Float, y: Float, eventTime: Long, action: Int): MotionEvent =
+        MotionEvent.obtain(
+            eventTime,
+            eventTime,
+            action,
+            1,
+            arrayOf(MotionEvent.PointerProperties().apply {
+                id = 0
+                toolType = MotionEvent.TOOL_TYPE_FINGER
+            }),
+            arrayOf(MotionEvent.PointerCoords().apply {
+                this.x = x
+                this.y = y
+                pressure = 1f
+                size = 1f
+            }),
+            0, 0, 1.0f, 1.0f, 0, 0, 0,0
+        )
+
     // workaround for a bug in Qt that causes the mouse click event not to be handled
     // also disable right-click, as it causes the application to crash
     private var lastButtonState = 0
@@ -849,6 +896,7 @@ class AmneziaActivity : QtActivity() {
     }
 
     override fun dispatchTouchEvent(ev: MotionEvent?): Boolean {
+        Log.v(TAG, "dispatchTouch: $ev")
         if (ev != null && ev.getToolType(0) == MotionEvent.TOOL_TYPE_MOUSE) {
             return handleMouseEvent(ev) { super.dispatchTouchEvent(it) }
         }

@@ -304,6 +304,11 @@ bool AndroidController::requestAuthentication()
     return result;
 }
 
+void AndroidController::sendTouch(float x, float y)
+{
+    callActivityMethod("sendTouch", "(FF)V", x, y);
+}
+
 // Moving log processing to the Android side
 jclass AndroidController::log;
 jmethodID AndroidController::logDebug;
