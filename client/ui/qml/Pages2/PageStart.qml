@@ -324,14 +324,16 @@ PageType {
                 target: ServersModel
 
                 function onModelReset() {
-                    var hasServerWithWriteAccess = ServersModel.hasServerWithWriteAccess()
-                    shareTabButton.visible = hasServerWithWriteAccess
-                    shareTabButton.width = hasServerWithWriteAccess ? undefined : 0
+                    if (!SettingsController.isOnTv()) {
+                        var hasServerWithWriteAccess = ServersModel.hasServerWithWriteAccess()
+                        shareTabButton.visible = hasServerWithWriteAccess
+                        shareTabButton.width = hasServerWithWriteAccess ? undefined : 0
+                    }
                 }
             }
 
-            visible: ServersModel.hasServerWithWriteAccess()
-            width: ServersModel.hasServerWithWriteAccess() ? undefined : 0
+            visible: !SettingsController.isOnTv() && ServersModel.hasServerWithWriteAccess()
+            width: !SettingsController.isOnTv() && ServersModel.hasServerWithWriteAccess() ? undefined : 0
 
             isSelected: tabBar.currentIndex === 1
             image: "qrc:/images/controls/share-2.svg"
