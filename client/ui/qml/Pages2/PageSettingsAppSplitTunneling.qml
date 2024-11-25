@@ -21,8 +21,6 @@ import "../Components"
 PageType {
     id: root
 
-    defaultActiveFocusItem: focusItem
-
     property bool pageEnabled
 
     Component.onCompleted: {
@@ -66,11 +64,6 @@ PageType {
         }
     }
 
-    Item {
-        id: focusItem
-        KeyNavigation.tab: backButton
-    }
-
     ColumnLayout {
         id: header
 
@@ -82,7 +75,6 @@ PageType {
 
         BackButtonType {
             id: backButton
-            KeyNavigation.tab: switcher
         }
 
         RowLayout {
@@ -102,10 +94,6 @@ PageType {
                 Layout.rightMargin: 16
 
                 enabled: root.pageEnabled
-
-                KeyNavigation.tab: selector.enabled ?
-                                       selector :
-                                       searchField.textField
 
                 checked: AppSplitTunnelingModel.isTunnelingEnabled
                 onToggled: {                    
@@ -130,8 +118,6 @@ PageType {
 
             enabled: Qt.platform.os === "android" && root.pageEnabled
 
-            KeyNavigation.tab: searchField.textField
-
             listView: ListViewWithRadioButtonType {
                 rootWidth: root.width
 
@@ -141,7 +127,7 @@ PageType {
 
                 clickedFunction: function() {
                     selector.text = selectedText
-                    selector.close()
+                    selector.closeTriggered()
                     if (AppSplitTunnelingModel.routeMode !== root.routeModesModel[currentIndex].type) {
                         AppSplitTunnelingModel.routeMode = root.routeModesModel[currentIndex].type
                     }
@@ -267,7 +253,6 @@ PageType {
             textFieldPlaceholderText: qsTr("application name")
             buttonImageSource: "qrc:/images/controls/plus.svg"
 
-            Keys.onTabPressed: lastItemTabClicked(focusItem)
             rightButtonClickedOnEnter: true
 
             clickedFunc: function() {
@@ -281,7 +266,7 @@ PageType {
                         AppSplitTunnelingController.addApp(fileName)
                     }
                 } else if (Qt.platform.os === "android"){
-                    installedAppDrawer.open()
+                    installedAppDrawer.openTriggered()
                 }
 
                 PageController.showBusyIndicator(false)
