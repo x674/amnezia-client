@@ -589,7 +589,7 @@ class AmneziaActivity : QtActivity() {
                         }
                         val uri = it?.data?.apply {
                             grantUriPermission(packageName, this, Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                        }.toString() ?: ""
+                        }?.toString() ?: ""
                         Log.v(TAG, "Open file: $uri")
                         mainScope.launch {
                             qtInitialized.await()
