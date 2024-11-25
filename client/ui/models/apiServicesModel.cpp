@@ -29,7 +29,7 @@ namespace
         constexpr char isAvailable[] = "is_available";
 
         constexpr char subscription[] = "subscription";
-        constexpr char endData[] = "end_date";
+        constexpr char endDate[] = "end_date";
     }
 
     namespace serviceType
@@ -256,7 +256,7 @@ ApiServicesModel::ApiServicesData ApiServicesModel::getApiServicesData(const QJs
     serviceData.serviceInfo.object = serviceInfo;
     serviceData.availableCountries = availableCountries;
 
-    serviceData.subscription.endDate = subscriptionObject.value(configKey::endData).toString();
+    serviceData.subscription.endDate = subscriptionObject.value(configKey::endDate).toString();
 
     return serviceData;
 }
