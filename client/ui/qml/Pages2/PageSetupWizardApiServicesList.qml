@@ -55,20 +55,13 @@ PageType {
         anchors.left: parent.left
         anchors.bottom: parent.bottom
         anchors.topMargin: 16
-        anchors.bottomMargin: 16
-        spacing: 16
+        spacing: 0
 
         currentIndex: 1
         clip: true
         model: ApiServicesModel
 
-        ScrollBar.vertical: ScrollBar {
-            id: scrollBar
-            policy: servicesListView.height >= servicesListView.contentHeight ? ScrollBar.AlwaysOff : ScrollBar.AlwaysOn
-        }
-
-        Keys.onUpPressed: scrollBar.decrease()
-        Keys.onDownPressed: scrollBar.increase()
+        ScrollBar.vertical: ScrollBar {}
 
         delegate: Item {
             implicitWidth: servicesListView.width
@@ -85,6 +78,7 @@ PageType {
                     Layout.fillWidth: true
                     Layout.rightMargin: 16
                     Layout.leftMargin: 16
+                    Layout.bottomMargin: 16
 
                     headerText: name
                     bodyText: cardDescription
