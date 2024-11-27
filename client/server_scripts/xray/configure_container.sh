@@ -1,4 +1,5 @@
 cd /opt/amnezia/xray
+XRAY_CLIENT_ID=$(xray uuid) && echo $XRAY_CLIENT_ID > /opt/amnezia/xray/xray_uuid.key
 XRAY_SHORT_ID=$(openssl rand -hex 8) && echo $XRAY_SHORT_ID > /opt/amnezia/xray/xray_short_id.key
 
 KEYPAIR=$(xray x25519)
@@ -32,6 +33,10 @@ cat > /opt/amnezia/xray/server.json <<EOF
             "protocol": "vless",
             "settings": {
                 "clients": [
+                    {
+                        "id": "$XRAY_CLIENT_ID",
+                        "flow": "xtls-rprx-vision"
+                    }
                 ],
                 "decryption": "none"
             },

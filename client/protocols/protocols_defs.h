@@ -148,6 +148,7 @@ namespace amnezia
         namespace xray
         {
             constexpr char serverConfigPath[] = "/opt/amnezia/xray/server.json";
+            constexpr char uuidPath[] = "/opt/amnezia/xray/xray_uuid.key";
             constexpr char PublicKeyPath[] = "/opt/amnezia/xray/xray_public.key";
             constexpr char PrivateKeyPath[] = "/opt/amnezia/xray/xray_private.key";
             constexpr char shortidPath[] = "/opt/amnezia/xray/xray_short_id.key";
