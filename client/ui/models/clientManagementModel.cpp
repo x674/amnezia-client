@@ -285,10 +285,10 @@ ErrorCode ClientManagementModel::getXrayClients(const DockerContainer container,
         }
         QString clientId = clientObj["id"].toString();
         
-        QString xrayDefUuid = serverController->getTextFileFromContainer(container, credentials, amnezia::protocols::xray::uuidPath, error);
-        xrayDefUuid.replace("\n", "");
+        QString xrayDefaultUuid = serverController->getTextFileFromContainer(container, credentials, amnezia::protocols::xray::uuidPath, error);
+        xrayDefaultUuid.replace("\n", "");
 
-        if (!isClientExists(clientId) && clientId != xrayDefUuid) {
+        if (!isClientExists(clientId) && clientId != xrayDefaultUuid) {
             QJsonObject client;
             client[configKey::clientId] = clientId;
 
