@@ -62,7 +62,7 @@ void UpdateController::checkForUpdates()
 
                 for (auto asset : assets) {
                     QJsonObject assetObject = asset.toObject();
-                    if (assetObject.value("name").toString().contains(".dmg")) {
+                    if (assetObject.value("name").toString().contains(".tar.gz")) {
                         m_downloadUrl = assetObject.value("browser_download_url").toString();
                     }
                 }
@@ -112,10 +112,11 @@ void UpdateController::runInstaller()
                 QFutureWatcher<int> watcher;
                 QFuture<int> future = QtConcurrent::run([this]() {
                     QString t = installerPath;
-                    QRemoteObjectPendingReply<int> ipcReply = IpcClient::Interface()->mountDmg(t, true);
-                    ipcReply.waitForFinished();
-                    QProcess::execute("/Volumes/AmneziaVPN/AmneziaVPN.app/Contents/MacOS/AmneziaVPN");
-                    ipcReply = IpcClient::Interface()->mountDmg(t, false);
+                    QRemoteObjectPendingReply<int> ipcReply = IpcClient::Interface()->installApp(t);
+                    // QRemoteObjectPendingReply<int> ipcReply = IpcClient::Interface()->mountDmg(t, true);
+                    // ipcReply.waitForFinished();
+                    // QProcess::execute("/Volumes/AmneziaVPN/AmneziaVPN.app/Contents/MacOS/AmneziaVPN");
+                    // ipcReply = IpcClient::Interface()->mountDmg(t, false);
                     ipcReply.waitForFinished();
                     return ipcReply.returnValue();
                 });

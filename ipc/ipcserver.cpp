@@ -377,3 +377,11 @@ int IpcServer::mountDmg(const QString &path, bool mount)
 #endif
     return 0;
 }
+
+int IpcServer::installApp(const QString &path)
+{
+#if defined(Q_OS_LINUX) && !defined(Q_OS_ANDROID)
+    return QProcess::execute(QString("sudo dpkg -i %1").arg(path));
+#endif
+    return 0;
+}
