@@ -381,7 +381,70 @@ int IpcServer::mountDmg(const QString &path, bool mount)
 int IpcServer::installApp(const QString &path)
 {
 #if defined(Q_OS_LINUX) && !defined(Q_OS_ANDROID)
-    return QProcess::execute(QString("sudo dpkg -i %1").arg(path));
+    QProcess process;
+    QString tempDir = QStandardPaths::writableLocation(QStandardPaths::TempLocation);
+    QString extractDir = tempDir + "/amnezia_update";
+    
+    qDebug() << "Installing app from:" << path;
+    qDebug() << "Using temp directory:" << extractDir;
+    
+    // Create extraction directory if it doesn't exist
+    QDir dir(extractDir);
+    if (!dir.exists()) {
+        dir.mkpath(".");
+        qDebug() << "Created extraction directory";
+    }
+    
+    // First, extract the zip archive
+    qDebug() << "Extracting ZIP archive...";
+    process.start("unzip", QStringList() << path << "-d" << extractDir);
+    process.waitForFinished();
+    if (process.exitCode() != 0) {
+        qDebug() << "ZIP extraction error:" << process.readAllStandardError();
+        return process.exitCode();
+    }
+    qDebug() << "ZIP archive extracted successfully";
+    
+    // Look for tar file in extracted files
+    qDebug() << "Looking for TAR file...";
+    QDirIterator tarIt(extractDir, QStringList() << "*.tar", QDir::Files);
+    if (!tarIt.hasNext()) {
+        qDebug() << "TAR file not found in the extracted archive";
+        return -1;
+    }
+    
+    // Extract found tar archive
+    QString tarPath = tarIt.next();
+    qDebug() << "Found TAR file:" << tarPath;
+    qDebug() << "Extracting TAR archive...";
+    
+    process.start("tar", QStringList() << "-xf" << tarPath << "-C" << extractDir);
+    process.waitForFinished();
+    if (process.exitCode() != 0) {
+        qDebug() << "TAR extraction error:" << process.readAllStandardError();
+        return process.exitCode();
+    }
+    qDebug() << "TAR archive extracted successfully";
+    
+    // Remove tar file as it's no longer needed
+    QFile::remove(tarPath);
+    qDebug() << "Removed temporary TAR file";
+    
+    // Find executable file and run it
+    qDebug() << "Looking for executable file...";
+    QDirIterator it(extractDir, QDir::Files | QDir::Executable, QDirIterator::Subdirectories);
+    if (it.hasNext()) {
+        QString execPath = it.next();
+        qDebug() << "Found executable:" << execPath;
+        qDebug() << "Launching installer...";
+        process.start("sudo", QStringList() << execPath);
+        process.waitForFinished();
+        qDebug() << "Installer finished with exit code:" << process.exitCode();
+        return process.exitCode();
+    }
+    
+    qDebug() << "No executable file found";
+    return -1; // Executable not found
 #endif
     return 0;
 }

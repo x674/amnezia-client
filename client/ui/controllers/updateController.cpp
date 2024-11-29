@@ -62,7 +62,7 @@ void UpdateController::checkForUpdates()
 
                 for (auto asset : assets) {
                     QJsonObject assetObject = asset.toObject();
-                    if (assetObject.value("name").toString().contains(".tar.gz")) {
+                    if (assetObject.value("name").toString().contains(".tar.zip")) {
                         m_downloadUrl = assetObject.value("browser_download_url").toString();
                     }
                 }
@@ -108,27 +108,12 @@ void UpdateController::runInstaller()
             if (file.open(QIODevice::WriteOnly)) {
                 file.write(reply->readAll());
                 file.close();
+                QString t = installerPath;
+                auto ipcReply = IpcClient::Interface()->installApp(t);
+                ipcReply.waitForFinished();
+                int result = ipcReply.returnValue();
 
-                QFutureWatcher<int> watcher;
-                QFuture<int> future = QtConcurrent::run([this]() {
-                    QString t = installerPath;
-                    QRemoteObjectPendingReply<int> ipcReply = IpcClient::Interface()->installApp(t);
-                    // QRemoteObjectPendingReply<int> ipcReply = IpcClient::Interface()->mountDmg(t, true);
-                    // ipcReply.waitForFinished();
-                    // QProcess::execute("/Volumes/AmneziaVPN/AmneziaVPN.app/Contents/MacOS/AmneziaVPN");
-                    // ipcReply = IpcClient::Interface()->mountDmg(t, false);
-                    ipcReply.waitForFinished();
-                    return ipcReply.returnValue();
-                });
-
-                QEventLoop wait;
-                connect(&watcher, &QFutureWatcher<ErrorCode>::finished, &wait, &QEventLoop::quit);
-                watcher.setFuture(future);
-                wait.exec();
-
-                qDebug() <<  future.result();
-
-//                emit errorOccured("");
+                // emit errorOccured("");
             }
         } else {
             if (reply->error() == QNetworkReply::NetworkError::OperationCanceledError
