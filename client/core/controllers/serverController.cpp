@@ -751,10 +751,6 @@ ErrorCode ServerController::isServerPortBusy(const ServerCredentials &credential
 
 ErrorCode ServerController::isUserInSudo(const ServerCredentials &credentials, DockerContainer container)
 {
-    if (credentials.userName == "root") {
-        return ErrorCode::NoError;
-    }
-
     QString stdOut;
     auto cbReadStdOut = [&](const QString &data, libssh::Client &) {
         stdOut += data + "\n";
@@ -770,6 +766,12 @@ ErrorCode ServerController::isUserInSudo(const ServerCredentials &credentials, D
 
     if (credentials.userName != "root" && !stdOut.contains("sudo") && !stdOut.contains("wheel"))
         return ErrorCode::ServerUserNotInSudo;
+    if (stdOut.contains("sudo:") && !stdOut.contains("uname:") && stdOut.contains("not found"))
+        return ErrorCode::SudoPackageIsNotPreinstalled;
+    if (stdOut.contains("sudoers"))
+        return ErrorCode::ServerUserNotAllowedInSudoers;
+    if (stdOut.contains("password is required"))
+        return ErrorCode::ServerUserPasswordRequired;
 
     return error;
 }
