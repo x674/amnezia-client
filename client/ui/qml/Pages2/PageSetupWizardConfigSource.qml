@@ -291,7 +291,7 @@ PageType {
                 Layout.leftMargin: 16
                 Layout.bottomMargin: 16
 
-                visible: (Qt.platform.os === "android" || Qt.platform.os === "ios") && SettingsController.isCameraPresent()
+                visible: Qt.platform.os !== "macos" && SettingsController.isCameraPresent()
 
                 headerText: qsTr("QR code")
 
