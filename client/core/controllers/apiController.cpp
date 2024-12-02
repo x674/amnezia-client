@@ -273,7 +273,7 @@ QJsonObject ApiController::fillApiPayload(const QString &protocol, const ApiCont
 
 void ApiController::updateServerConfigFromApi(const QString &installationUuid, const int serverIndex, QJsonObject serverConfig)
 {
-#ifdef Q_OS_IOS
+#if defined(Q_OS_IOS) || defined(MACOS_NE)
     IosController::Instance()->requestInetAccess();
     QThread::msleep(10);
 #endif
@@ -330,7 +330,7 @@ void ApiController::updateServerConfigFromApi(const QString &installationUuid, c
 
 ErrorCode ApiController::getServicesList(QByteArray &responseBody)
 {
-#ifdef Q_OS_IOS
+#if defined(Q_OS_IOS) || defined(MACOS_NE)
     IosController::Instance()->requestInetAccess();
     QThread::msleep(10);
 #endif
@@ -384,7 +384,7 @@ ErrorCode ApiController::getConfigForService(const QString &installationUuid, co
                                              const QString &protocol, const QString &serverCountryCode, const QJsonObject &authData,
                                              QJsonObject &serverConfig)
 {
-#ifdef Q_OS_IOS
+#if defined(Q_OS_IOS) || defined(MACOS_NE)
     IosController::Instance()->requestInetAccess();
     QThread::msleep(10);
 #endif
