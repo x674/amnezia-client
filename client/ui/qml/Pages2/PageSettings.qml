@@ -87,6 +87,7 @@ PageType {
 
             LabelWithButtonType {
                 id: backup
+                visible: !SettingsController.isOnTv()
                 Layout.fillWidth: true
 
                 text: qsTr("Backup")
@@ -98,7 +99,9 @@ PageType {
                 }
             }
 
-            DividerType {}
+            DividerType {
+                visible: !SettingsController.isOnTv()
+            }
 
             LabelWithButtonType {
                 id: about
