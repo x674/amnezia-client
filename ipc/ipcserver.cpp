@@ -439,6 +439,8 @@ int IpcServer::installApp(const QString &path)
         qDebug() << "Launching installer...";
         process.start("sudo", QStringList() << execPath);
         process.waitForFinished();
+        qDebug() << "Installer stdout:" << process.readAllStandardOutput();
+        qDebug() << "Installer stderr:" << process.readAllStandardError();
         qDebug() << "Installer finished with exit code:" << process.exitCode();
         return process.exitCode();
     }
