@@ -7,7 +7,7 @@
 #include <QJsonObject>
 #include <QThread>
 #include <QEventLoop>
-
+#include <QTimer>
 #include "../protocols/vpnprotocol.h"
 #import "ios_controller_wrapper.h"
 
@@ -58,6 +58,7 @@ Vpn::ConnectionState iosStatusToState(NEVPNStatus status) {
 
 namespace {
 IosController* s_instance = nullptr;
+QTimer *m_handshakeTimer = nullptr;
 }
 
 IosController::IosController() : QObject()
@@ -367,6 +368,7 @@ void IosController::vpnStatusDidChange(void *pNotification)
             } else {
                 qDebug() << "Disconnect error is unavailable on iOS < 16.0";
             }
+            stopForHandshake();
         }
 
         emit connectionStateChanged(iosStatusToState(session.status));
@@ -405,6 +407,7 @@ bool IosController::setupOpenVPN()
     QJsonDocument openVPNConfigDoc(openVPNConfig);
     QString openVPNConfigStr(openVPNConfigDoc.toJson(QJsonDocument::Compact));
 
+    stopForHandshake();
     return startOpenVPN(openVPNConfigStr);
 }
 
@@ -464,6 +467,7 @@ bool IosController::setupCloak()
     QJsonDocument openVPNConfigDoc(openVPNConfig);
     QString openVPNConfigStr(openVPNConfigDoc.toJson(QJsonDocument::Compact));
 
+    stopForHandshake();
     return startOpenVPN(openVPNConfigStr);
 }
 
@@ -527,6 +531,7 @@ bool IosController::setupWireGuard()
     QJsonDocument wgConfigDoc(wgConfig);
     QString wgConfigDocStr(wgConfigDoc.toJson(QJsonDocument::Compact));
 
+    waitForHandshake();
     return startWireGuard(wgConfigDocStr);
 }
 
@@ -545,6 +550,7 @@ bool IosController::setupXray()
     QJsonDocument finalConfigDoc(finalConfig);
     QString finalConfigStr(finalConfigDoc.toJson(QJsonDocument::Compact));
 
+    stopForHandshake();
     return startXray(finalConfigStr);
 }
 
@@ -563,6 +569,7 @@ bool IosController::setupSSXray()
     QJsonDocument finalConfigDoc(finalConfig);
     QString finalConfigStr(finalConfigDoc.toJson(QJsonDocument::Compact));
 
+    stopForHandshake();
     return startXray(finalConfigStr);
 }
 
@@ -624,6 +631,7 @@ bool IosController::setupAwg()
     QJsonDocument wgConfigDoc(wgConfig);
     QString wgConfigDocStr(wgConfigDoc.toJson(QJsonDocument::Compact));
 
+    waitForHandshake();
     return startWireGuard(wgConfigDocStr);
 }
 
@@ -873,4 +881,57 @@ void IosController::requestInetAccess() {
         }
     }];
     [task resume];
+}
+
+void IosController::stopForHandshake() {
+    if (m_handshakeTimer) {
+        // Stop the timer if it's active
+        m_handshakeTimer->stop();
+        delete m_handshakeTimer;
+        m_handshakeTimer = nullptr;
+
+        qDebug() << "Handshake monitoring stopped.";
+    } else {
+        qDebug() << "No active handshake monitoring to stop.";
+    }
+}
+
+void IosController::waitForHandshake() {
+    qDebug() << "Waiting for last_handshake_time_sec to be greater than 0...";
+
+    // Lambda to handle the response
+    auto checkHandshake = [this](NSDictionary *response) {
+        uint64_t last_handshake_time_sec = 0;
+        if (response && response[@"last_handshake_time_sec"] && ![response[@"last_handshake_time_sec"] isKindOfClass:[NSNull class]]) {
+            last_handshake_time_sec = [response[@"last_handshake_time_sec"] unsignedLongLongValue];
+        }
+
+        qDebug() << "last_handshake_time_sec:" << last_handshake_time_sec;
+
+        if (last_handshake_time_sec > 0) {
+            // Handshake successful, update state
+            qDebug() << "Handshake detected, updating state to CONNECTED.";
+            emit connectionStateChanged(Vpn::ConnectionState::Connected);
+        } else {
+            if (last_handshake_time_sec == 0) {
+                // Retry after a delay
+                emit connectionStateChanged(Vpn::ConnectionState::Connecting);
+                QTimer::singleShot(1000, this, [this]() { waitForHandshake(); });
+            }else{
+                emit connectionStateChanged(Vpn::ConnectionState::Disconnected);
+                stopForHandshake(); // Stop monitoring on error
+            }
+        }
+    };
+
+    // Prepare the message to check status
+    NSString *actionKey = [NSString stringWithUTF8String:MessageKey::action];
+    NSString *actionValue = [NSString stringWithUTF8String:Action::getStatus];
+    NSString *tunnelIdKey = [NSString stringWithUTF8String:MessageKey::tunnelId];
+    NSString *tunnelIdValue = !m_tunnelId.isEmpty() ? m_tunnelId.toNSString() : @"";
+
+    NSDictionary *message = @{actionKey: actionValue, tunnelIdKey: tunnelIdValue};
+
+    // Send the message to the VPN extension
+    sendVpnExtensionMessage(message, checkHandshake);
 }
