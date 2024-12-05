@@ -63,6 +63,8 @@ signals:
 
     void finished();
 
+    void stopForHandshake();
+    void waitForHandshake();
 protected slots:
 
 private:
