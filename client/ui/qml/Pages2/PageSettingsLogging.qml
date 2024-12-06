@@ -122,9 +122,7 @@ PageType {
             FocusController.nextKeyRightItem()
         }
 
-        ScrollBar.vertical: ScrollBar {
-            policy: ScrollBar.AsNeeded
-        }
+        ScrollBar.vertical: ScrollBarType {}
 
         model: logTypes
         spacing: 24

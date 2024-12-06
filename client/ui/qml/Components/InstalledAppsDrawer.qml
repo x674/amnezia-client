@@ -81,10 +81,7 @@ DrawerType2 {
                     }
                 }
 
-                ScrollBar.vertical: ScrollBar {
-                    id: scrollBar
-                    policy: ScrollBar.AlwaysOn
-                }
+                ScrollBar.vertical: ScrollBarType {}
 
                 ButtonGroup {
                     id: buttonGroup

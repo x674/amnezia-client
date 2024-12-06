@@ -30,7 +30,7 @@ ListView {
 
     // snapMode: ListView.SnapToItem
 
-    // ScrollBar.vertical: ScrollBar {}
+    ScrollBar.vertical: ScrollBarType {}
 
     property bool isFocusable: true
 

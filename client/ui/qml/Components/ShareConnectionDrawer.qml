@@ -85,9 +85,7 @@ DrawerType2 {
                 FocusController.nextKeyRightItem()
             }
 
-            ScrollBar.vertical: ScrollBar {
-                policy: ScrollBar.AsNeeded
-            }
+            ScrollBar.vertical: ScrollBarType {}
 
             model: 1
 

@@ -151,6 +151,7 @@
         <file>ui/qml/Controls2/PageType.qml</file>
         <file>ui/qml/Controls2/PopupType.qml</file>
         <file>ui/qml/Controls2/ProgressBarType.qml</file>
+        <file>ui/qml/Controls2/ScrollBarType.qml</file>
         <file>ui/qml/Controls2/StackViewType.qml</file>
         <file>ui/qml/Controls2/SwitcherType.qml</file>
         <file>ui/qml/Controls2/TabButtonType.qml</file>

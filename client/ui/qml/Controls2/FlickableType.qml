@@ -25,7 +25,7 @@ Flickable {
     Keys.onUpPressed: scrollBar.decrease()
     Keys.onDownPressed: scrollBar.increase()
 
-    ScrollBar.vertical: ScrollBar {
+    ScrollBar.vertical: ScrollBarType {
         id: scrollBar
         policy: fl.height >= fl.contentHeight ? ScrollBar.AlwaysOff : ScrollBar.AlwaysOn
     }
