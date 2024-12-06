@@ -205,7 +205,7 @@ We express our gratitude to [BrowserStack](https://www.browserstack.com) for sup
 
 ### [Сайт](https://amnezia.org) | [Зеркало на сайт](https://storage.googleapis.com/kldscp/amnezia.org) | [Документация](https://docs.amnezia.org) | [Решение проблем](https://docs.amnezia.org/troubleshooting)
 
-> [!Совет]
+> [!TIP]
 > Если [сайт Amnezia](https://amnezia.org) заблокирован в вашем регионе, вы можете воспользоваться [ссылкой на зеркало](https://storage.googleapis.com/kldscp/amnezia.org).
 
 <a href="https://amnezia.org/downloads"><img src="https://github.com/amnezia-vpn/amnezia-client/blob/dev/metadata/img-readme/download-website.svg" width="150" style="max-width: 100%; margin-right: 10px"></a>
