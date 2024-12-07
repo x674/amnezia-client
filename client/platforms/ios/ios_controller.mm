@@ -885,9 +885,9 @@ void IosController::requestInetAccess() {
 
 void IosController::stopForHandshake() {
     if (m_handshakeTimer) {
-        // Stop the timer if it's active
-        m_handshakeTimer->stop();
-        delete m_handshakeTimer;
+        if (m_handshakeTimer->isActive()) {
+            m_handshakeTimer->stop();
+        }
         m_handshakeTimer = nullptr;
 
         qDebug() << "Handshake monitoring stopped.";
@@ -899,39 +899,57 @@ void IosController::stopForHandshake() {
 void IosController::waitForHandshake() {
     qDebug() << "Waiting for last_handshake_time_sec to be greater than 0...";
 
-    // Lambda to handle the response
-    auto checkHandshake = [this](NSDictionary *response) {
-        uint64_t last_handshake_time_sec = 0;
-        if (response && response[@"last_handshake_time_sec"] && ![response[@"last_handshake_time_sec"] isKindOfClass:[NSNull class]]) {
-            last_handshake_time_sec = [response[@"last_handshake_time_sec"] unsignedLongLongValue];
-        }
+    // Initialize the timer if it's null
+    if (!m_handshakeTimer) {
+        m_handshakeTimer = new QTimer(this);
 
-        qDebug() << "last_handshake_time_sec:" << last_handshake_time_sec;
+        // Connect the timer's timeout signal to perform handshake checking
+        connect(m_handshakeTimer, &QTimer::timeout, this, [this]() {
+            // Prepare the message to check status
+            NSString *actionKey = [NSString stringWithUTF8String:MessageKey::action];
+            NSString *actionValue = [NSString stringWithUTF8String:Action::getStatus];
+            NSString *tunnelIdKey = [NSString stringWithUTF8String:MessageKey::tunnelId];
+            NSString *tunnelIdValue = !m_tunnelId.isEmpty() ? m_tunnelId.toNSString() : @"";
 
-        if (last_handshake_time_sec > 0) {
-            // Handshake successful, update state
-            qDebug() << "Handshake detected, updating state to CONNECTED.";
-            emit connectionStateChanged(Vpn::ConnectionState::Connected);
-        } else {
-            if (last_handshake_time_sec == 0) {
-                // Retry after a delay
-                emit connectionStateChanged(Vpn::ConnectionState::Connecting);
-                QTimer::singleShot(1000, this, [this]() { waitForHandshake(); });
-            }else{
-                emit connectionStateChanged(Vpn::ConnectionState::Disconnected);
-                stopForHandshake(); // Stop monitoring on error
-            }
-        }
-    };
+            NSDictionary *message = @{actionKey: actionValue, tunnelIdKey: tunnelIdValue};
 
-    // Prepare the message to check status
-    NSString *actionKey = [NSString stringWithUTF8String:MessageKey::action];
-    NSString *actionValue = [NSString stringWithUTF8String:Action::getStatus];
-    NSString *tunnelIdKey = [NSString stringWithUTF8String:MessageKey::tunnelId];
-    NSString *tunnelIdValue = !m_tunnelId.isEmpty() ? m_tunnelId.toNSString() : @"";
+            // Lambda to handle the response
+            auto checkHandshake = [this](NSDictionary *response) {
+                uint64_t last_handshake_time_sec = 0;
+                if (response && response[@"last_handshake_time_sec"] &&
+                    ![response[@"last_handshake_time_sec"] isKindOfClass:[NSNull class]]) {
+                    last_handshake_time_sec = [response[@"last_handshake_time_sec"] unsignedLongLongValue];
+                }
 
-    NSDictionary *message = @{actionKey: actionValue, tunnelIdKey: tunnelIdValue};
+                qDebug() << "last_handshake_time_sec:" << last_handshake_time_sec;
 
-    // Send the message to the VPN extension
-    sendVpnExtensionMessage(message, checkHandshake);
+                if (last_handshake_time_sec > 0) {
+                    // Handshake successful, update state
+                    qDebug() << "Handshake detected, updating state to CONNECTED.";
+                    emit connectionStateChanged(Vpn::ConnectionState::Connected);
+                } else {
+                    if (last_handshake_time_sec == 0) {
+                        // Keep retrying
+                        emit connectionStateChanged(Vpn::ConnectionState::Connecting);
+                    } else {
+                        // Handle handshake failure and stop monitoring
+                        emit connectionStateChanged(Vpn::ConnectionState::Disconnected);
+                        stopForHandshake();
+                        return;
+                    }
+                }
+            };
+
+            // Send the message to the VPN extension
+            sendVpnExtensionMessage(message, checkHandshake);
+        });
+
+        qDebug() << "Handshake timer initialized.";
+    }
+
+    // Start the timer only if it's not already active
+    if (m_handshakeTimer && !m_handshakeTimer->isActive()) {
+        m_handshakeTimer->start(1000); // Retry every 1 second
+        qDebug() << "Handshake timer Retry every 1 second";
+    }
 }
