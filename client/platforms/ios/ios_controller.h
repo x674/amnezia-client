@@ -55,6 +55,9 @@ public:
     QString openFile();
 
     void requestInetAccess();
+
+    void stopForHandshake();
+    void waitForHandshake();
 signals:
     void connectionStateChanged(Vpn::ConnectionState state);
     void bytesChanged(quint64 receivedBytes, quint64 sentBytes);
@@ -62,9 +65,6 @@ signals:
     void importBackupFromOutside(const QString);
 
     void finished();
-
-    void stopForHandshake();
-    void waitForHandshake();
 protected slots:
 
 private:
