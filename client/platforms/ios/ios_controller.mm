@@ -872,6 +872,7 @@ void IosController::stopForHandshake() {
         if (m_handshakeTimer->isActive()) {
             m_handshakeTimer->stop();
         }
+        m_handshakeTimer->deleteLater();
         m_handshakeTimer = nullptr;
 
         qDebug() << "Handshake monitoring stopped.";
@@ -911,6 +912,8 @@ void IosController::waitForHandshake() {
                     // Handshake successful, update state
                     qDebug() << "Handshake detected, updating state to CONNECTED.";
                     emit connectionStateChanged(Vpn::ConnectionState::Connected);
+                    stopForHandshake();
+                    return;
                 } else {
                     if (last_handshake_time_sec == 0) {
                         // Keep retrying
