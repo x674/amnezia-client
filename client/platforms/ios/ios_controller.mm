@@ -395,7 +395,6 @@ bool IosController::setupOpenVPN()
     QJsonDocument openVPNConfigDoc(openVPNConfig);
     QString openVPNConfigStr(openVPNConfigDoc.toJson(QJsonDocument::Compact));
 
-    stopForHandshake();
     return startOpenVPN(openVPNConfigStr);
 }
 
@@ -455,7 +454,6 @@ bool IosController::setupCloak()
     QJsonDocument openVPNConfigDoc(openVPNConfig);
     QString openVPNConfigStr(openVPNConfigDoc.toJson(QJsonDocument::Compact));
 
-    stopForHandshake();
     return startOpenVPN(openVPNConfigStr);
 }
 
@@ -538,7 +536,6 @@ bool IosController::setupXray()
     QJsonDocument finalConfigDoc(finalConfig);
     QString finalConfigStr(finalConfigDoc.toJson(QJsonDocument::Compact));
 
-    stopForHandshake();
     return startXray(finalConfigStr);
 }
 
@@ -557,7 +554,6 @@ bool IosController::setupSSXray()
     QJsonDocument finalConfigDoc(finalConfig);
     QString finalConfigStr(finalConfigDoc.toJson(QJsonDocument::Compact));
 
-    stopForHandshake();
     return startXray(finalConfigStr);
 }
 
