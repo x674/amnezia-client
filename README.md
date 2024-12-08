@@ -50,7 +50,7 @@ AmneziaVPN uses several open-source projects to work:
 - [OpenVPN](https://openvpn.net/)
 - [Shadowsocks](https://shadowsocks.org/)
 - [Qt](https://www.qt.io/)
-- [LibSsh](https://libssh.org) - forked from Qt Creator
+- [LibSsh](https://libssh.org)
 - and more...
 
 ## Checking out the source code
