@@ -90,6 +90,7 @@ DrawerType2 {
             model: 1
 
             clip: true
+            reuseItems: true
 
             header: ColumnLayout {
                 width: listView.width

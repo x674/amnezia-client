@@ -176,7 +176,7 @@ Button {
             ButtonTextType {
                 id: buttonText
 
-                color: textColor
+                color: root.textColor
                 text: root.text
                 visible: root.text === "" ? false : true
 

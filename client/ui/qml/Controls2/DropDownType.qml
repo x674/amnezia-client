@@ -225,11 +225,6 @@ Item {
                     id: backButton
                     backButtonImage: root.headerBackButtonImage
                     backButtonFunction: function() { menu.closeTriggered() }
-                    onActiveFocusChanged: {
-                        if(backButton.enabled && backButton.activeFocus) {
-                            root.listView.positionViewAtBeginning()
-                        }
-                    }
                 }
             }
 

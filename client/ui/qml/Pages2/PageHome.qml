@@ -142,13 +142,6 @@ PageType {
                 drawer.expandedHeight = implicitHeight
             }
 
-            Connections {
-                objectName: "drawerConnections"
-
-                target: drawer
-                enabled: !GC.isMobile()
-            }
-
             ColumnLayout {
                 id: collapsed
                 objectName: "collapsedColumnLayout"
@@ -294,16 +287,6 @@ PageType {
                             ServersModel.processedIndex = ServersModel.defaultIndex
                             PageController.goToPage(PageEnum.PageSettingsServerInfo)
                         }
-                    }
-                }
-            }
-
-            Connections {
-                target: drawer
-                enabled: !GC.isMobile()
-                function onIsCollapsedChanged() {
-                    if (!drawer.isCollapsed) {
-                        focusItem1.forceActiveFocus()
                     }
                 }
             }

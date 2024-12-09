@@ -87,6 +87,8 @@ PageType {
                 property int containerDefaultPort
                 property int containerDefaultTransportProto
 
+                property bool isFocusable: true
+
                 delegate: Item {
                     implicitWidth: containers.width
                     implicitHeight: delegateContent.implicitHeight

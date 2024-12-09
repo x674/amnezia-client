@@ -182,15 +182,6 @@ PageType {
                     shareFullAccessDrawer.openTriggered()
                 }
 
-                actionButton.onFocusChanged: {
-                    console.debug("MOVE THIS LOGIC TO CPP!")
-                    if (actionButton.activeFocus) {
-                        if (fl) {
-                            fl.ensureVisible(moreButton)
-                        }
-                    }
-                }
-
                 DrawerType2 {
                     id: shareFullAccessDrawer
 
@@ -677,38 +668,7 @@ PageType {
                 }
 
                 clip: true
-                // interactive: false
-
-                // activeFocusOnTab: true
-                // focus: true
-                // Keys.onTabPressed: {
-                //     if (!GC.isMobile()) {
-                //         if (currentIndex < this.count - 1) {
-                //             this.incrementCurrentIndex()
-                //             // currentItem.focusItem.forceActiveFocus()
-                //         } else {
-                //             this.currentIndex = 0
-                //             // lastItemTabClicked(focusItem)
-                //         }
-                //     }
-                // }
-
-                // onActiveFocusChanged: {
-                //     if (focus && !GC.isMobile()) {
-                //         currentIndex = 0
-                //         // currentItem.focusItem.forceActiveFocus()
-                //     }
-                // }
-
-                // onCurrentIndexChanged: {
-                //     if (currentItem) {
-                //         if (currentItem.y < a.contentY) {
-                //             a.contentY = currentItem.y
-                //         } else if (currentItem.y + currentItem.height + clientsListView.y > a.contentY + a.height) {
-                //             a.contentY = currentItem.y + clientsListView.y + currentItem.height - a.height
-                //         }
-                //     }
-                // }
+                reuseItems: true
 
                 delegate: Item {
                     implicitWidth: clientsListView.width

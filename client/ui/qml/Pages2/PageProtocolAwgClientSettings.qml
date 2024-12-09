@@ -240,7 +240,6 @@ PageType {
                     id: underloadPacketMagicHeaderTextField
                     Layout.fillWidth: true
                     Layout.topMargin: 16
-                    parentFlickable: fl
 
                     enabled: false
 
