@@ -132,7 +132,7 @@ void SettingsController::backupAppConfig(const QString &fileName)
 void SettingsController::restoreAppConfig(const QString &fileName)
 {
     QByteArray data;
-    SystemController::readFile(fileName, &data);
+    SystemController::readFile(fileName, data);
     restoreAppConfigFromData(data);
 }
 

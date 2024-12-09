@@ -62,28 +62,28 @@ void SystemController::saveFile(const QString &fileName, const QString &data)
 #endif
 }
 
-bool SystemController::readFile(const QString &fileName, QByteArray *data)
+bool SystemController::readFile(const QString &fileName, QByteArray &data)
 {
 #ifdef Q_OS_ANDROID
     int fd = AndroidController::instance()->getFd(fileName);
     if (fd == -1) return false;
     QFile file;
     if(!file.open(fd, QIODevice::ReadOnly)) return false;
-    data->assign(file.readAll());
+    data = file.readAll();
     AndroidController::instance()->closeFd();
 #else
     QFile file(fileName);
     if (!file.open(QIODevice::ReadOnly)) return false;
-    data->assign(file.readAll());
+    data = file.readAll();
 #endif
     return true;
 }
 
-bool SystemController::readFile(const QString &fileName, QString *data)
+bool SystemController::readFile(const QString &fileName, QString &data)
 {
     QByteArray byteArray;
-    if(!readFile(fileName, &byteArray)) return false;
-    data->assign(byteArray);
+    if(!readFile(fileName, byteArray)) return false;
+    data = byteArray;
     return true;
 }
 

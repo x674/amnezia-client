@@ -83,7 +83,7 @@ void SitesController::removeSite(int index)
 void SitesController::importSites(const QString &fileName, bool replaceExisting)
 {
     QByteArray jsonData;
-    if (!SystemController::readFile(fileName, &jsonData)) {
+    if (!SystemController::readFile(fileName, jsonData)) {
         emit errorOccurred(tr("Can't open file: %1").arg(fileName));
         return;
     }

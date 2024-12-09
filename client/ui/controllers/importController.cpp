@@ -78,7 +78,7 @@ ImportController::ImportController(const QSharedPointer<ServersModel> &serversMo
 bool ImportController::extractConfigFromFile(const QString &fileName)
 {
     QString data;
-    if (!SystemController::readFile(fileName, &data)) {
+    if (!SystemController::readFile(fileName, data)) {
         emit importErrorOccurred(ErrorCode::ImportOpenConfigError, false);
         return false;
     }
