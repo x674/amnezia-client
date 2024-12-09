@@ -554,8 +554,8 @@ ErrorCode ClientManagementModel::revokeClient(const int row, const DockerContain
             break;
         }
         default: {
-            logger.warning() << "Unknown container type was received";
-            break;
+            logger.error() << "Internal error: received unexpected container type";
+            return ErrorCode::InternalError;
         }
     }
 
@@ -597,22 +597,22 @@ ErrorCode ClientManagementModel::revokeClient(const QJsonObject &containerConfig
 
     switch(container)
     {
-    case DockerContainer::ShadowSocks:
-    case DockerContainer::Cloak: {
-        protocol = Proto::OpenVpn;
-        break;
-    }
-    case DockerContainer::OpenVpn:
-    case DockerContainer::WireGuard:
-    case DockerContainer::Awg:
-    case DockerContainer::Xray: {
-        protocol = ContainerProps::defaultProtocol(container);
-        break;
-    }
-    default: {
-        logger.warning() << "Unknown container type was received";
-        return ErrorCode::NoError;
-    }
+        case DockerContainer::ShadowSocks:
+        case DockerContainer::Cloak: {
+            protocol = Proto::OpenVpn;
+            break;
+        }
+        case DockerContainer::OpenVpn:
+        case DockerContainer::WireGuard:
+        case DockerContainer::Awg:
+        case DockerContainer::Xray: {
+            protocol = ContainerProps::defaultProtocol(container);
+            break;
+        }
+        default: {
+            logger.error() << "Internal error: received unexpected container type";
+            return ErrorCode::InternalError;
+        }
     }
 
     auto protocolConfig = ContainerProps::getProtocolConfigFromContainer(protocol, containerConfig);
@@ -686,8 +686,8 @@ ErrorCode ClientManagementModel::revokeClient(const QJsonObject &containerConfig
         break;
     }
     default:
-        logger.warning() << "Unknown container type was received";
-        break;
+        logger.error() << "Internal error: received unexpected container type";
+        return ErrorCode::InternalError;
     }
 
     return errorCode;
