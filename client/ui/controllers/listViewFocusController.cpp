@@ -141,6 +141,12 @@ int ListViewFocusController::currentIndex() const
     return m_delegateIndex;
 }
 
+void ListViewFocusController::setDelegateIndex(int index)
+{
+    m_delegateIndex = index;
+    m_listView->setProperty("currentIndex", index);
+}
+
 void ListViewFocusController::nextDelegate()
 {
     const auto sectionName = m_currentSectionString[static_cast<int>(m_currentSection)];
@@ -164,7 +170,7 @@ void ListViewFocusController::nextDelegate()
     }
     case Section::Delegate:
         if (m_delegateIndex < (size() - 1)) {
-            m_delegateIndex++;
+            setDelegateIndex(m_delegateIndex + 1);
             viewAtCurrentIndex();
             break;
         } else if (hasFooter()) {
@@ -199,14 +205,14 @@ void ListViewFocusController::previousDelegate()
     case Section::Footer: {
         if (size() > 0) {
             m_currentSection = Section::Delegate;
-            m_delegateIndex = size() - 1;
+            setDelegateIndex(size() - 1);
             break;
         }
         [[fallthrough]];
     }
     case Section::Delegate: {
         if (m_delegateIndex > 0) {
-            m_delegateIndex--;
+            setDelegateIndex(m_delegateIndex - 1);
             break;
         } else if (hasHeader()) {
             m_currentSection = Section::Header;

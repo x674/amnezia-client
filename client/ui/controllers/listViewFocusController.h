@@ -52,6 +52,7 @@ private:
 
     int size() const;
     int currentIndex() const;
+    void setDelegateIndex(int index);
     void viewAtCurrentIndex() const;
     QQuickItem* itemAtIndex(const int index) const;
     QQuickItem* currentDelegate() const;
