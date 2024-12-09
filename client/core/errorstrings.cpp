@@ -22,7 +22,7 @@ QString errorString(ErrorCode code) {
     case(ErrorCode::ServerUserNotInSudo): errorMessage = QObject::tr("The user is not a member of the sudo group"); break;
     case(ErrorCode::ServerPacketManagerError): errorMessage = QObject::tr("Server error: Package manager error"); break;
     case(ErrorCode::SudoPackageIsNotPreinstalled): errorMessage = QObject::tr("The sudo package is not pre-installed"); break;
-    case(ErrorCode::ServerUserNotAllowedInSudoers): errorMessage = QObject::tr("The user is not allowed in sudoers"); break;
+    case(ErrorCode::ServerUserNotAllowedInSudoers): errorMessage = QObject::tr("Action not allowed in sudoers"); break;
     case(ErrorCode::ServerUserPasswordRequired): errorMessage = QObject::tr("The user's password is required"); break;
 
     // Libssh errors
