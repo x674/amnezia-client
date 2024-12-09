@@ -25,108 +25,6 @@ PageType {
         }
     }
 
-    QtObject {
-        id: amneziaVpn
-
-        property string title: qsTr("VPN by Amnezia")
-        property string description: qsTr("Connect to classic paid and free VPN services from Amnezia")
-        property string imageSource: "qrc:/images/controls/amnezia.svg"
-        property bool isVisible: true
-        property var handler: function() {
-            PageController.showBusyIndicator(true)
-            var result = InstallController.fillAvailableServices()
-            PageController.showBusyIndicator(false)
-            if (result) {
-                PageController.goToPage(PageEnum.PageSetupWizardApiServicesList)
-            }
-        }
-    }
-
-    QtObject {
-        id: selfHostVpn
-
-        property string title: qsTr("Self-hosted VPN")
-        property string description: qsTr("Configure Amnezia VPN on your own server")
-        property string imageSource: "qrc:/images/controls/server.svg"
-        property bool isVisible: true
-        property var handler: function() {
-            PageController.goToPage(PageEnum.PageSetupWizardCredentials)
-        }
-    }
-
-    QtObject {
-        id: backupRestore
-
-        property string title: qsTr("Restore from backup")
-        property string description: qsTr("")
-        property string imageSource: "qrc:/images/controls/archive-restore.svg"
-        property bool isVisible: true
-        property var handler: function() {
-            var filePath = SystemController.getFileName(qsTr("Open backup file"),
-                                                        qsTr("Backup files (*.backup)"))
-            if (filePath !== "") {
-                PageController.showBusyIndicator(true)
-                SettingsController.restoreAppConfig(filePath)
-                PageController.showBusyIndicator(false)
-            }
-        }
-    }
-
-    QtObject {
-        id: fileOpen
-
-        property string title: qsTr("File with connection settings")
-        property string description: qsTr("")
-        property string imageSource: "qrc:/images/controls/folder-search-2.svg"
-        property bool isVisible: true
-        property var handler: function() {
-            var nameFilter = !ServersModel.getServersCount() ? "Config or backup files (*.vpn *.ovpn *.conf *.json *.backup)" :
-                                                               "Config files (*.vpn *.ovpn *.conf *.json)"
-            var fileName = SystemController.getFileName(qsTr("Open config file"), nameFilter)
-            if (fileName !== "") {
-                if (ImportController.extractConfigFromFile(fileName)) {
-                    PageController.goToPage(PageEnum.PageSetupWizardViewConfig)
-                }
-            }
-        }
-    }
-
-    QtObject {
-        id: qrScan
-
-        property string title: qsTr("QR code")
-        property string description: qsTr("")
-        property string imageSource: "qrc:/images/controls/scan-line.svg"
-        property bool isVisible: SettingsController.isCameraPresent()
-        property var handler: function() {
-            ImportController.startDecodingQr()
-            if (Qt.platform.os === "ios") {
-                PageController.goToPage(PageEnum.PageSetupWizardQrReader)
-            }
-        }
-    }
-
-    QtObject {
-        id: siteLink
-
-        property string title: qsTr("I have nothing")
-        property string description: qsTr("")
-        property string imageSource: "qrc:/images/controls/help-circle.svg"
-        property bool isVisible: true
-        property var handler: function() {
-            Qt.openUrlExternally(LanguageModel.getCurrentSiteUrl())
-        }
-    }
-
-    property list<QtObject> variants: [
-        amneziaVpn,
-        selfHostVpn,
-        backupRestore,
-        fileOpen,
-        qrScan,
-        siteLink
-    ]
-
     ListView {
         id: listView
 
@@ -158,13 +56,13 @@ PageType {
             FocusController.nextKeyRightItem()
         }
 
-        ScrollBar.vertical: ScrollBar {
-            policy: ScrollBar.AsNeeded
-        }
+        ScrollBar.vertical: ScrollBarType {}
 
         model: variants
 
         clip: true
+
+        reuseItems: true
 
         header: ColumnLayout {
             width: listView.width
@@ -316,8 +214,6 @@ PageType {
             width: listView.width
 
             CardWithIconsType {
-                id: entry
-
                 Layout.fillWidth: true
                 Layout.rightMargin: 16
                 Layout.leftMargin: 16
@@ -333,6 +229,108 @@ PageType {
 
                 onClicked: { handler() }
             }
+        }
+    }
+
+    property list<QtObject> variants: [
+        amneziaVpn,
+        selfHostVpn,
+        backupRestore,
+        fileOpen,
+        qrScan,
+        siteLink
+    ]
+    
+    QtObject {
+        id: amneziaVpn
+
+        property string title: qsTr("VPN by Amnezia")
+        property string description: qsTr("Connect to classic paid and free VPN services from Amnezia")
+        property string imageSource: "qrc:/images/controls/amnezia.svg"
+        property bool isVisible: true
+        property var handler: function() {
+            PageController.showBusyIndicator(true)
+            var result = InstallController.fillAvailableServices()
+            PageController.showBusyIndicator(false)
+            if (result) {
+                PageController.goToPage(PageEnum.PageSetupWizardApiServicesList)
+            }
+        }
+    }
+
+    QtObject {
+        id: selfHostVpn
+
+        property string title: qsTr("Self-hosted VPN")
+        property string description: qsTr("Configure Amnezia VPN on your own server")
+        property string imageSource: "qrc:/images/controls/server.svg"
+        property bool isVisible: true
+        property var handler: function() {
+            PageController.goToPage(PageEnum.PageSetupWizardCredentials)
+        }
+    }
+
+    QtObject {
+        id: backupRestore
+
+        property string title: qsTr("Restore from backup")
+        property string description: qsTr("")
+        property string imageSource: "qrc:/images/controls/archive-restore.svg"
+        property bool isVisible: true
+        property var handler: function() {
+            var filePath = SystemController.getFileName(qsTr("Open backup file"),
+                                                        qsTr("Backup files (*.backup)"))
+            if (filePath !== "") {
+                PageController.showBusyIndicator(true)
+                SettingsController.restoreAppConfig(filePath)
+                PageController.showBusyIndicator(false)
+            }
+        }
+    }
+
+    QtObject {
+        id: fileOpen
+
+        property string title: qsTr("File with connection settings")
+        property string description: qsTr("")
+        property string imageSource: "qrc:/images/controls/folder-search-2.svg"
+        property bool isVisible: true
+        property var handler: function() {
+            var nameFilter = !ServersModel.getServersCount() ? "Config or backup files (*.vpn *.ovpn *.conf *.json *.backup)" :
+                                                               "Config files (*.vpn *.ovpn *.conf *.json)"
+            var fileName = SystemController.getFileName(qsTr("Open config file"), nameFilter)
+            if (fileName !== "") {
+                if (ImportController.extractConfigFromFile(fileName)) {
+                    PageController.goToPage(PageEnum.PageSetupWizardViewConfig)
+                }
+            }
+        }
+    }
+
+    QtObject {
+        id: qrScan
+
+        property string title: qsTr("QR code")
+        property string description: qsTr("")
+        property string imageSource: "qrc:/images/controls/scan-line.svg"
+        property bool isVisible: SettingsController.isCameraPresent()
+        property var handler: function() {
+            ImportController.startDecodingQr()
+            if (Qt.platform.os === "ios") {
+                PageController.goToPage(PageEnum.PageSetupWizardQrReader)
+            }
+        }
+    }
+
+    QtObject {
+        id: siteLink
+
+        property string title: qsTr("I have nothing")
+        property string description: qsTr("")
+        property string imageSource: "qrc:/images/controls/help-circle.svg"
+        property bool isVisible: true
+        property var handler: function() {
+            Qt.openUrlExternally(LanguageModel.getCurrentSiteUrl())
         }
     }
 }
