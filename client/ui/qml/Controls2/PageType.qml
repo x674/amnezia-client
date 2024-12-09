@@ -10,7 +10,7 @@ Item {
     property StackView stackView: StackView.view
 
     onVisibleChanged: {
-        if (visible && !GC.isMobile()) {
+        if (visible) {
             timer.start()
         }
     }
@@ -20,10 +20,11 @@ Item {
         id: timer
         interval: 200 // Milliseconds
         onTriggered: {
+            console.debug(">>> PageType timer triggered")
             FocusController.resetRootObject()
             FocusController.setFocusOnDefaultItem()
         }
         repeat: false // Stop the timer after one trigger
-        running: !GC.isMobile()  // Start the timer
+        running: true // Start the timer
     }
 }

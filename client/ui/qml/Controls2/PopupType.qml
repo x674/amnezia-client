@@ -45,15 +45,13 @@ Popup {
 
     Timer {
         id: timer
-        interval: 400 // Milliseconds
+        interval: 200 // Milliseconds
         onTriggered: {
-            if (!GC.isMobile()) {
-                FocusController.setFocusItem(closeButton)
-                FocusController.pushRootObject(root)
-            }
+            FocusController.pushRootObject(root)
+            FocusController.setFocusItem(closeButton)
         }
         repeat: false // Stop the timer after one trigger
-        running: !GC.isMobile()  // Start the timer
+        running: true // Start the timer
     }
 
     contentItem: Item {
