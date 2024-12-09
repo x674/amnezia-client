@@ -59,6 +59,7 @@ Vpn::ConnectionState iosStatusToState(NEVPNStatus status) {
 namespace {
 IosController* s_instance = nullptr;
 QTimer *m_handshakeTimer = nullptr;
+bool is_WireGuard = false;
 }
 
 IosController::IosController() : QObject()
@@ -206,21 +207,27 @@ bool IosController::connectVpn(amnezia::Proto proto, const QJsonObject& configur
 
 
     if (proto == amnezia::Proto::OpenVpn) {
+        is_WireGuard = false;
         return setupOpenVPN();
     }
     if (proto == amnezia::Proto::Cloak) {
+        is_WireGuard = false;
         return setupCloak();
     }
     if (proto == amnezia::Proto::WireGuard) {
+        is_WireGuard = true;
         return setupWireGuard();
     }
     if (proto == amnezia::Proto::Awg) {
+        is_WireGuard = true;
         return setupAwg();
     }
     if (proto == amnezia::Proto::Xray) {
+        is_WireGuard = false;
         return setupXray();
     }
     if (proto == amnezia::Proto::SSXray) {
+        is_WireGuard = false;
         return setupSSXray();
     }
 
@@ -261,7 +268,11 @@ void IosController::vpnStatusDidChange(void *pNotification)
 
     if (session /* && session == TunnelManager.session */ ) {
         qDebug() << "IosController::vpnStatusDidChange" << iosStatusToState(session.status) << session;
-
+        if (is_WireGuard && session.status == NEVPNStatusConnected)
+        {
+            // use last_handshake_time for check status connected for WireGuard
+            return;
+        }
         if (session.status == NEVPNStatusDisconnected) {
             if (@available(iOS 16.0, *)) {
                 [session fetchLastDisconnectErrorWithCompletionHandler:^(NSError * _Nullable error) {
@@ -874,6 +885,7 @@ void IosController::stopForHandshake() {
         }
         m_handshakeTimer->deleteLater();
         m_handshakeTimer = nullptr;
+        is_WireGuard = false;
 
         qDebug() << "Handshake monitoring stopped.";
     } else {
