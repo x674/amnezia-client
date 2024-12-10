@@ -380,7 +380,87 @@ int IpcServer::mountDmg(const QString &path, bool mount)
 
 int IpcServer::installApp(const QString &path)
 {
-#if defined(Q_OS_LINUX) && !defined(Q_OS_ANDROID)
+    qDebug() << "Installing app from:" << path;
+
+#ifdef Q_OS_WINDOWS
+    // On Windows, simply run the .exe file with administrator privileges
+    QProcess process;
+    process.setProgram("powershell.exe");
+    process.setArguments(QStringList() 
+        << "Start-Process"
+        << path
+        << "-Verb" 
+        << "RunAs"
+        << "-Wait");
+    
+    qDebug() << "Launching installer with elevated privileges...";
+    process.start();
+    process.waitForFinished();
+    
+    if (process.exitCode() != 0) {
+        qDebug() << "Installation error:" << process.readAllStandardError();
+    }
+    return process.exitCode();
+
+#elif defined(Q_OS_MACOS)
+    // DRAFT
+    
+    QProcess process;
+    QString tempDir = QStandardPaths::writableLocation(QStandardPaths::TempLocation);
+    QString mountPoint = tempDir + "/AmneziaVPN_mount";
+    
+    // Create mount point
+    QDir dir(mountPoint);
+    if (!dir.exists()) {
+        dir.mkpath(".");
+    }
+    
+    // Mount DMG image
+    qDebug() << "Mounting DMG image...";
+    process.start("hdiutil", QStringList() 
+        << "attach" 
+        << path
+        << "-mountpoint" 
+        << mountPoint
+        << "-nobrowse");
+    process.waitForFinished();
+    
+    if (process.exitCode() != 0) {
+        qDebug() << "Failed to mount DMG:" << process.readAllStandardError();
+        return process.exitCode();
+    }
+    
+    // Look for .app bundle in mounted image
+    QDirIterator it(mountPoint, QStringList() << "*.app", QDir::Dirs);
+    if (!it.hasNext()) {
+        qDebug() << "No .app bundle found in DMG";
+        return -1;
+    }
+    
+    QString appPath = it.next();
+    QString targetPath = "/Applications/" + QFileInfo(appPath).fileName();
+    
+    // Copy application to /Applications
+    qDebug() << "Copying app to Applications folder...";
+    process.start("cp", QStringList() 
+        << "-R"
+        << appPath 
+        << targetPath);
+    process.waitForFinished();
+    
+    // Unmount DMG
+    qDebug() << "Unmounting DMG...";
+    process.start("hdiutil", QStringList() 
+        << "detach" 
+        << mountPoint);
+    process.waitForFinished();
+    
+    if (process.exitCode() != 0) {
+        qDebug() << "Installation error:" << process.readAllStandardError();
+    }
+    return process.exitCode();
+
+#elif defined(Q_OS_LINUX) && !defined(Q_OS_ANDROID)
     QProcess process;
     QString tempDir = QStandardPaths::writableLocation(QStandardPaths::TempLocation);
     QString extractDir = tempDir + "/amnezia_update";
