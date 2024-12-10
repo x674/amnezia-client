@@ -62,9 +62,19 @@ void UpdateController::checkForUpdates()
 
                 for (auto asset : assets) {
                     QJsonObject assetObject = asset.toObject();
+                    #ifdef Q_OS_WINDOWS
+                    if (assetObject.value("name").toString().endsWith(".exe")) {
+                        m_downloadUrl = assetObject.value("browser_download_url").toString();
+                    }
+                    #elif defined(Q_OS_MACOS)
+                    if (assetObject.value("name").toString().endsWith(".dmg")) {
+                        m_downloadUrl = assetObject.value("browser_download_url").toString();
+                    }
+                    #elif defined(Q_OS_LINUX) && !defined(Q_OS_ANDROID)
                     if (assetObject.value("name").toString().contains(".tar.zip")) {
                         m_downloadUrl = assetObject.value("browser_download_url").toString();
                     }
+                    #endif
                 }
 
                 emit updateFound();
